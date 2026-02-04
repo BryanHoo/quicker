@@ -62,3 +62,8 @@ final class ClipboardStore {
     }
 }
 
+extension ClipboardStore: ClipboardStoreInserting {
+    func insert(text: String) {
+        try? insert(text: text)
+    }
+}
