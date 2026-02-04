@@ -1,0 +1,11 @@
+.DS_Store
+.worktrees/
+worktrees/
+.serena/
+
+# Xcode user data
+**/xcuserdata/
+*.xcuserstate
+
+# Build artifacts
+DerivedData/

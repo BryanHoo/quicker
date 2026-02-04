@@ -1,0 +1,5 @@
+
+[mcp_servers.xc-all]
+args = ["/Users/bryanhu/Develop/Agent/codex/mcp-servers/xc-all/dist/index.js"]
+command = "node"
+
