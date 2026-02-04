@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 protocol PasteEventSending {
     func sendCmdV()
@@ -34,7 +35,12 @@ final class PasteService {
 
 struct SystemPasteEventSender: PasteEventSending {
     func sendCmdV() {
-        // 真实实现放下一步：这里先留空，让单测先跑通
+        let source = CGEventSource(stateID: .combinedSessionState)
+        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true)
+        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
+        keyDown?.flags = .maskCommand
+
+        keyDown?.post(tap: .cghidEventTap)
+        keyUp?.post(tap: .cghidEventTap)
     }
 }
-
