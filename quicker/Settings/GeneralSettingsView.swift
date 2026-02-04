@@ -2,10 +2,9 @@ import Carbon
 import SwiftUI
 
 struct GeneralSettingsView: View {
+    @EnvironmentObject private var appState: AppState
     @State private var hotkey: Hotkey = PreferencesKeys.hotkey.defaultValue
     @State private var isRecordingHotkey = false
-
-    private let preferences = PreferencesStore()
 
     var body: some View {
         Form {
@@ -15,9 +14,11 @@ struct GeneralSettingsView: View {
                     Spacer()
                     Button("修改…") { isRecordingHotkey = true }
                 }
-                Text("提示：若与系统/其他应用冲突，可能无法生效（下一步会加“冲突提示”）。")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                if appState.hotkeyRegisterStatus != noErr {
+                    Text("可能与系统/其他应用冲突，建议换一个组合。")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("开机自启") {
@@ -25,7 +26,7 @@ struct GeneralSettingsView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .onAppear { hotkey = preferences.hotkey }
+        .onAppear { hotkey = appState.preferences.hotkey }
         .sheet(isPresented: $isRecordingHotkey) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("按下新的快捷键（建议包含 ⌘）").font(.headline)
@@ -41,7 +42,7 @@ struct GeneralSettingsView: View {
                     let modifiers = carbonModifiers(from: event.modifierFlags)
                     let captured = Hotkey(keyCode: UInt32(event.keyCode), modifiers: modifiers)
                     hotkey = captured
-                    preferences.hotkey = captured
+                    appState.applyHotkey(captured)
                     isRecordingHotkey = false
                 }
                 Spacer()

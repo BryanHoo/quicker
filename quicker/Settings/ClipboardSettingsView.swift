@@ -2,13 +2,11 @@ import AppKit
 import SwiftUI
 
 struct ClipboardSettingsView: View {
+    @EnvironmentObject private var appState: AppState
     @State private var maxHistoryCount: Int = PreferencesKeys.maxHistoryCount.defaultValue
     @State private var dedupeAdjacentEnabled: Bool = PreferencesKeys.dedupeAdjacentEnabled.defaultValue
     @State private var ignoredApps: [IgnoredApp] = []
     @State private var isConfirmingClearHistory = false
-
-    private let preferences = PreferencesStore()
-    private let ignoreStore = IgnoreAppStore()
 
     var body: some View {
         Form {
@@ -56,7 +54,8 @@ struct ClipboardSettingsView: View {
                     .foregroundStyle(.red)
                     .confirmationDialog("确认清空所有历史？", isPresented: $isConfirmingClearHistory) {
                         Button("清空", role: .destructive) {
-                            // 下一步接 ClipboardStore.clear() + 刷新面板
+                            try? appState.clipboardStore.clear()
+                            appState.refreshPanelEntries()
                         }
                         Button("取消", role: .cancel) {}
                     }
@@ -66,14 +65,16 @@ struct ClipboardSettingsView: View {
     }
 
     private func load() {
-        maxHistoryCount = preferences.maxHistoryCount
-        dedupeAdjacentEnabled = preferences.dedupeAdjacentEnabled
-        ignoredApps = ignoreStore.all()
+        maxHistoryCount = appState.preferences.maxHistoryCount
+        dedupeAdjacentEnabled = appState.preferences.dedupeAdjacentEnabled
+        ignoredApps = appState.ignoreAppStore.all()
     }
 
     private func save() {
-        preferences.maxHistoryCount = maxHistoryCount
-        preferences.dedupeAdjacentEnabled = dedupeAdjacentEnabled
+        appState.preferences.maxHistoryCount = maxHistoryCount
+        appState.preferences.dedupeAdjacentEnabled = dedupeAdjacentEnabled
+        try? appState.clipboardStore.trimToMaxCount()
+        appState.refreshPanelEntries()
     }
 
     private func pickApp() {
@@ -86,15 +87,15 @@ struct ClipboardSettingsView: View {
         let name = bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
             ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
 
-        try? ignoreStore.add(bundleIdentifier: bundleId, displayName: name, appPath: url.path)
-        ignoredApps = ignoreStore.all()
+        try? appState.ignoreAppStore.add(bundleIdentifier: bundleId, displayName: name, appPath: url.path)
+        ignoredApps = appState.ignoreAppStore.all()
     }
 
     private func deleteApps(at offsets: IndexSet) {
         for i in offsets {
-            ignoreStore.remove(bundleIdentifier: ignoredApps[i].bundleIdentifier)
+            appState.ignoreAppStore.remove(bundleIdentifier: ignoredApps[i].bundleIdentifier)
         }
-        ignoredApps = ignoreStore.all()
+        ignoredApps = appState.ignoreAppStore.all()
     }
 }
 
