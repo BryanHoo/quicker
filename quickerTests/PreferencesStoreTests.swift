@@ -1,0 +1,27 @@
+import XCTest
+@testable import quicker
+
+@MainActor
+final class PreferencesStoreTests: XCTestCase {
+    func testDefaultValues() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "test.\(UUID().uuidString)"))
+        let store = PreferencesStore(userDefaults: defaults)
+
+        XCTAssertEqual(store.maxHistoryCount, PreferencesKeys.maxHistoryCount.defaultValue)
+        XCTAssertEqual(store.dedupeAdjacentEnabled, PreferencesKeys.dedupeAdjacentEnabled.defaultValue)
+        XCTAssertEqual(store.hotkey, PreferencesKeys.hotkey.defaultValue)
+    }
+
+    func testPersistAndReadBack() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "test.\(UUID().uuidString)"))
+        let store = PreferencesStore(userDefaults: defaults)
+
+        store.maxHistoryCount = 10
+        store.dedupeAdjacentEnabled = false
+        store.hotkey = Hotkey(keyCode: 1, modifiers: 0)
+
+        XCTAssertEqual(store.maxHistoryCount, 10)
+        XCTAssertEqual(store.dedupeAdjacentEnabled, false)
+        XCTAssertEqual(store.hotkey, Hotkey(keyCode: 1, modifiers: 0))
+    }
+}
