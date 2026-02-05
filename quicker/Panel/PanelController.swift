@@ -48,10 +48,10 @@ final class PanelController: NSObject, NSWindowDelegate {
             onClose: { [weak self] in
                 self?.close()
             },
-            onPaste: { [weak self] text in
+            onPaste: { [weak self] entry in
                 guard let self else { return }
                 self.close()
-                self.onPaste(text, self.previousFrontmostApp)
+                self.onPaste(entry.previewText, self.previousFrontmostApp)
             }
         )
 

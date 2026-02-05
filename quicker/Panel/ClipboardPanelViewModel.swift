@@ -5,11 +5,11 @@ import Foundation
 final class ClipboardPanelViewModel: ObservableObject {
     let pageSize: Int
 
-    @Published private(set) var entries: [String]
+    @Published private(set) var entries: [ClipboardPanelEntry]
     @Published private(set) var pageIndex: Int = 0
     @Published private(set) var selectedIndexInPage: Int = 0
 
-    init(pageSize: Int = 5, entries: [String] = []) {
+    init(pageSize: Int = 5, entries: [ClipboardPanelEntry] = []) {
         self.pageSize = pageSize
         self.entries = entries
     }
@@ -20,17 +20,17 @@ final class ClipboardPanelViewModel: ObservableObject {
         Pagination.rangeForPage(pageIndex: pageIndex, totalCount: entries.count, pageSize: pageSize)
     }
 
-    var visibleEntries: ArraySlice<String> {
+    var visibleEntries: ArraySlice<ClipboardPanelEntry> {
         entries[visibleRange]
     }
 
-    var selectedText: String? {
+    var selectedEntry: ClipboardPanelEntry? {
         let absoluteIndex = visibleRange.lowerBound + selectedIndexInPage
         guard absoluteIndex < entries.count else { return nil }
         return entries[absoluteIndex]
     }
 
-    func setEntries(_ newEntries: [String]) {
+    func setEntries(_ newEntries: [ClipboardPanelEntry]) {
         entries = newEntries
         pageIndex = 0
         selectedIndexInPage = 0
@@ -60,7 +60,7 @@ final class ClipboardPanelViewModel: ObservableObject {
         selectedIndexInPage = 0
     }
 
-    func textForCmdNumber(_ number: Int) -> String? {
+    func entryForCmdNumber(_ number: Int) -> ClipboardPanelEntry? {
         guard let absolute = Pagination.absoluteIndexForCmdNumber(cmdNumber: number, pageIndex: pageIndex, totalCount: entries.count, pageSize: pageSize) else {
             return nil
         }

@@ -51,7 +51,7 @@ final class AppState: ObservableObject {
 
         let hotkeyManager = HotkeyManager {
             let items = (try? clipboardStore.fetchLatest(limit: 500)) ?? []
-            panelViewModel.setEntries(items.map(\.text))
+            panelViewModel.setEntries(Self.makePanelEntries(from: items))
             panelController.toggle()
         }
 
@@ -79,7 +79,7 @@ final class AppState: ObservableObject {
 
     func refreshPanelEntries() {
         let items = (try? clipboardStore.fetchLatest(limit: 500)) ?? []
-        panelViewModel.setEntries(items.map(\.text))
+        panelViewModel.setEntries(Self.makePanelEntries(from: items))
     }
 
     func applyHotkey(_ hotkey: Hotkey) {
@@ -108,6 +108,21 @@ final class AppState: ObservableObject {
         if alert.runModal() == .alertFirstButtonReturn {
             try? clipboardStore.clear()
             refreshPanelEntries()
+        }
+    }
+}
+
+private extension AppState {
+    static func makePanelEntries(from items: [ClipboardEntry]) -> [ClipboardPanelEntry] {
+        items.map { entry in
+            switch ClipboardEntryKind(raw: entry.kindRaw) {
+            case .text:
+                ClipboardPanelEntry(kind: .text, previewText: entry.text, rtfData: nil, imagePath: nil)
+            case .rtf:
+                ClipboardPanelEntry(kind: .rtf, previewText: entry.text, rtfData: entry.rtfData, imagePath: nil)
+            case .image:
+                ClipboardPanelEntry(kind: .image, previewText: "图片", rtfData: nil, imagePath: entry.imagePath)
+            }
         }
     }
 }

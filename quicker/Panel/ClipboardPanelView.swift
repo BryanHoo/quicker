@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import SwiftUI
 
 struct ClipboardPanelView: View {
@@ -7,7 +8,7 @@ struct ClipboardPanelView: View {
     @ObservedObject var viewModel: ClipboardPanelViewModel
     @Environment(\.openSettings) private var openSettings
     var onClose: () -> Void
-    var onPaste: (String) -> Void
+    var onPaste: (ClipboardPanelEntry) -> Void
     private let sectionSpacing: CGFloat = Theme.sectionSpacing
 
     var body: some View {
@@ -80,9 +81,9 @@ struct ClipboardPanelView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 4) {
-                        ForEach(Array(viewModel.visibleEntries.enumerated()), id: \.offset) { idx, text in
+                        ForEach(Array(viewModel.visibleEntries.enumerated()), id: \.offset) { idx, entry in
                             ClipboardEntryRow(
-                                text: text,
+                                entry: entry,
                                 cmdNumber: idx + 1,
                                 isSelected: idx == viewModel.selectedIndexInPage,
                                 onSelect: {
@@ -138,7 +139,7 @@ struct ClipboardPanelView: View {
         }
 
         if event.keyCode == 36 { // Return
-            if let text = viewModel.selectedText { onPaste(text) }
+            if let entry = viewModel.selectedEntry { onPaste(entry) }
             return
         }
         switch event.keyCode {
@@ -152,7 +153,7 @@ struct ClipboardPanelView: View {
 
         if event.modifierFlags.contains(.command) {
             if let number = Int(event.charactersIgnoringModifiers ?? ""), (1...viewModel.pageSize).contains(number) {
-                if let text = viewModel.textForCmdNumber(number) { onPaste(text) }
+                if let entry = viewModel.entryForCmdNumber(number) { onPaste(entry) }
             }
         }
     }
@@ -161,14 +162,18 @@ struct ClipboardPanelView: View {
 private struct ClipboardEntryRow: View {
     private typealias Theme = QuickerTheme.ClipboardPanel
 
-    let text: String
+    let entry: ClipboardPanelEntry
     let cmdNumber: Int
     let isSelected: Bool
     var onSelect: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
-            Text(text)
+            if entry.kind == .image {
+                ClipboardImageThumbnail(imagePath: entry.imagePath)
+            }
+
+            Text(entry.previewText)
                 .font(Theme.rowTextFont)
                 .lineLimit(1)
                 .truncationMode(.tail)
@@ -194,6 +199,49 @@ private struct ClipboardEntryRow: View {
         )
         .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .onTapGesture { onSelect() }
+    }
+}
+
+private struct ClipboardImageThumbnail: View {
+    let imagePath: String?
+
+    @State private var thumbnail: NSImage?
+
+    var body: some View {
+        ZStack {
+            if let thumbnail {
+                Image(nsImage: thumbnail)
+                    .resizable()
+                    .scaledToFill()
+                    .clipped()
+            } else {
+                Image(systemName: "photo")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 32, height: 32)
+        .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .task(id: imagePath) {
+            thumbnail = Self.loadThumbnail(relativePath: imagePath)
+        }
+    }
+
+    private static func loadThumbnail(relativePath: String?) -> NSImage? {
+        guard let relativePath else { return nil }
+
+        let url = ClipboardAssetStore.defaultBaseURL().appendingPathComponent(relativePath, isDirectory: false)
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+
+        let thumbOpts: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: 64,
+        ]
+
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, thumbOpts as CFDictionary) else { return nil }
+        return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
     }
 }
 

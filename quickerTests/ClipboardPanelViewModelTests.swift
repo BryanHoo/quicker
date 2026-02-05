@@ -4,21 +4,24 @@ import XCTest
 @MainActor
 final class ClipboardPanelViewModelTests: XCTestCase {
     func testDefaultSelectionIsFirstItem() {
-        let vm = ClipboardPanelViewModel(pageSize: 5, entries: ["A", "B", "C"])
+        let vm = ClipboardPanelViewModel(pageSize: 5, entries: [makeEntry("A"), makeEntry("B"), makeEntry("C")])
         XCTAssertEqual(vm.selectedIndexInPage, 0)
-        XCTAssertEqual(vm.selectedText, "A")
+        XCTAssertEqual(vm.selectedEntry?.previewText, "A")
     }
 
     func testArrowDownMovesSelection() {
-        let vm = ClipboardPanelViewModel(pageSize: 5, entries: ["A", "B", "C"])
+        let vm = ClipboardPanelViewModel(pageSize: 5, entries: [makeEntry("A"), makeEntry("B"), makeEntry("C")])
         vm.moveSelectionDown()
-        XCTAssertEqual(vm.selectedText, "B")
+        XCTAssertEqual(vm.selectedEntry?.previewText, "B")
     }
 
     func testCmdNumberPastesOnlyWhenExists() {
-        let vm = ClipboardPanelViewModel(pageSize: 5, entries: ["A", "B"])
-        XCTAssertEqual(vm.textForCmdNumber(3), nil)
-        XCTAssertEqual(vm.textForCmdNumber(2), "B")
+        let vm = ClipboardPanelViewModel(pageSize: 5, entries: [makeEntry("A"), makeEntry("B")])
+        XCTAssertEqual(vm.entryForCmdNumber(3), nil)
+        XCTAssertEqual(vm.entryForCmdNumber(2)?.previewText, "B")
     }
 }
 
+private func makeEntry(_ previewText: String) -> ClipboardPanelEntry {
+    ClipboardPanelEntry(kind: .text, previewText: previewText, rtfData: nil, imagePath: nil)
+}
