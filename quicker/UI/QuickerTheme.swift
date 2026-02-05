@@ -4,7 +4,7 @@ enum QuickerTheme {
     enum ClipboardPanel {
         // MARK: Metrics
 
-        static let size = CGSize(width: 420, height: 332)
+        static let size = CGSize(width: 420, height: 344)
         static let cornerRadius: CGFloat = 16
         static let containerPadding: CGFloat = 14
         static let sectionSpacing: CGFloat = 10
