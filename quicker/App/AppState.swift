@@ -31,14 +31,14 @@ final class AppState: ObservableObject {
         let toast = ToastPresenter()
 
         let panelViewModel = ClipboardPanelViewModel(pageSize: 5)
-        let panelController = PanelController(viewModel: panelViewModel) { text, previousApp in
+        let panelController = PanelController(viewModel: panelViewModel) { entry, previousApp in
             if SystemAccessibilityPermission().isProcessTrusted(promptIfNeeded: false) {
                 previousApp?.activate(options: [])
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [pasteService] in
-                    _ = pasteService.paste(text: text)
+                    _ = pasteService.paste(entry: Self.makePasteEntry(from: entry))
                 }
             } else {
-                _ = pasteService.paste(text: text)
+                _ = pasteService.paste(entry: Self.makePasteEntry(from: entry))
                 toast.show(message: "未开启辅助功能，已复制到剪贴板（可手动 ⌘V）")
             }
         }
@@ -87,14 +87,14 @@ final class AppState: ObservableObject {
         hotkeyRegisterStatus = hotkeyManager.register(hotkey)
     }
 
-    func pasteFromPanel(text: String, previousApp: NSRunningApplication?) {
+    func pasteFromPanel(entry: ClipboardPanelEntry, previousApp: NSRunningApplication?) {
         if SystemAccessibilityPermission().isProcessTrusted(promptIfNeeded: false) {
             previousApp?.activate(options: [])
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [pasteService] in
-                _ = pasteService.paste(text: text)
+                _ = pasteService.paste(entry: Self.makePasteEntry(from: entry))
             }
         } else {
-            _ = pasteService.paste(text: text)
+            _ = pasteService.paste(entry: Self.makePasteEntry(from: entry))
             toast.show(message: "未开启辅助功能，已复制到剪贴板（可手动 ⌘V）")
         }
     }
@@ -124,5 +124,13 @@ private extension AppState {
                 ClipboardPanelEntry(kind: .image, previewText: "图片", rtfData: nil, imagePath: entry.imagePath)
             }
         }
+    }
+
+    static func makePasteEntry(from entry: ClipboardPanelEntry) -> ClipboardEntry {
+        let pasteEntry = ClipboardEntry(text: entry.previewText)
+        pasteEntry.kindRaw = entry.kind.rawValue
+        pasteEntry.rtfData = entry.rtfData
+        pasteEntry.imagePath = entry.imagePath
+        return pasteEntry
     }
 }

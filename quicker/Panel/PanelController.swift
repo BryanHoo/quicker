@@ -5,10 +5,10 @@ import SwiftUI
 final class PanelController: NSObject, NSWindowDelegate {
     private var panel: CenteredPanel?
     private let viewModel: ClipboardPanelViewModel
-    private let onPaste: (String, NSRunningApplication?) -> Void
+    private let onPaste: (ClipboardPanelEntry, NSRunningApplication?) -> Void
     private var previousFrontmostApp: NSRunningApplication?
 
-    init(viewModel: ClipboardPanelViewModel, onPaste: @escaping (String, NSRunningApplication?) -> Void) {
+    init(viewModel: ClipboardPanelViewModel, onPaste: @escaping (ClipboardPanelEntry, NSRunningApplication?) -> Void) {
         self.viewModel = viewModel
         self.onPaste = onPaste
     }
@@ -51,7 +51,7 @@ final class PanelController: NSObject, NSWindowDelegate {
             onPaste: { [weak self] entry in
                 guard let self else { return }
                 self.close()
-                self.onPaste(entry.previewText, self.previousFrontmostApp)
+                self.onPaste(entry, self.previousFrontmostApp)
             }
         )
 
