@@ -62,8 +62,7 @@ struct GeneralSettingsView: View {
     }
 
     private var hotkeyDisplay: String {
-        if hotkey == .default { return "⌘⇧V" }
-        return "键码 \(hotkey.keyCode)"
+        hotkey.displayString
     }
 
     private func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
