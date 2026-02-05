@@ -55,18 +55,36 @@ struct ClipboardSettingsView: View {
                     Button("选择应用…") { pickApp() }
                 }
 
-                List(selection: $ignoredSelection) {
-                    ForEach(ignoredApps, id: \.bundleIdentifier) { app in
-                        IgnoredAppRow(app: app)
-                            .tag(app.bundleIdentifier)
-                            .contextMenu {
-                                Button("移除") { removeApp(bundleIdentifier: app.bundleIdentifier) }
-                            }
+                if ignoredApps.isEmpty {
+                    ContentUnavailableView {
+                        Label("未添加忽略应用", systemImage: "app.dashed")
+                    } description: {
+                        Text("添加后将不会记录这些应用产生的剪贴板内容。")
                     }
-                    .onDelete(perform: deleteApps)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 160)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color(nsColor: .controlBackgroundColor))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(.quaternary, lineWidth: 1)
+                    )
+                } else {
+                    List(selection: $ignoredSelection) {
+                        ForEach(ignoredApps, id: \.bundleIdentifier) { app in
+                            IgnoredAppRow(app: app)
+                                .tag(app.bundleIdentifier)
+                                .contextMenu {
+                                    Button("移除") { removeApp(bundleIdentifier: app.bundleIdentifier) }
+                                }
+                        }
+                        .onDelete(perform: deleteApps)
+                    }
+                    .listStyle(.inset)
+                    .frame(height: 160)
                 }
-                .listStyle(.inset)
-                .frame(height: 160)
             }
 
             Section("危险操作") {
