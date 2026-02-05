@@ -5,10 +5,12 @@ import SwiftData
 final class ClipboardStore {
     private let modelContainer: ModelContainer
     private let preferences: PreferencesStore
+    private let assetStore: ClipboardAssetStoring
 
-    init(modelContainer: ModelContainer, preferences: PreferencesStore) {
+    init(modelContainer: ModelContainer, preferences: PreferencesStore, assetStore: ClipboardAssetStoring = ClipboardAssetStore()) {
         self.modelContainer = modelContainer
         self.preferences = preferences
+        self.assetStore = assetStore
     }
 
     private var context: ModelContext { modelContainer.mainContext }
@@ -24,13 +26,35 @@ final class ClipboardStore {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
 
+        let hash = ContentHash.sha256Hex(Data(trimmed.utf8))
+
         if preferences.dedupeAdjacentEnabled {
-            if let latest = try fetchLatest(limit: 1).first, latest.text == trimmed {
-                return false
+            if let latest = try fetchLatest(limit: 1).first {
+                let latestKind = ClipboardEntryKind(raw: latest.kindRaw)
+                let latestHash: String? = latest.contentHash ?? {
+                    switch latestKind {
+                    case .text:
+                        let text = latest.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        return ContentHash.sha256Hex(Data(text.utf8))
+                    case .rtf:
+                        if let rtf = latest.rtfData { return ContentHash.sha256Hex(rtf) }
+                        let text = latest.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        return ContentHash.sha256Hex(Data(text.utf8))
+                    case .image:
+                        return latest.imagePath
+                    }
+                }()
+
+                if latestKind == .text, latestHash == hash {
+                    return false
+                }
             }
         }
 
-        context.insert(ClipboardEntry(text: trimmed, createdAt: now))
+        let entry = ClipboardEntry(text: trimmed, createdAt: now)
+        entry.kindRaw = "text"
+        entry.contentHash = hash
+        context.insert(entry)
         try context.save()
 
         try trimToMaxCount()
@@ -39,10 +63,21 @@ final class ClipboardStore {
 
     func clear() throws {
         let all = try context.fetch(FetchDescriptor<ClipboardEntry>())
+        let imagePaths: Set<String> = Set(
+            all.compactMap { entry in
+                guard entry.kindRaw == "image", let path = entry.imagePath else { return nil }
+                return path
+            }
+        )
+
         for entry in all {
             context.delete(entry)
         }
         try context.save()
+
+        for path in imagePaths {
+            try assetStore.deleteImage(relativePath: path)
+        }
     }
 
     func trimToMaxCount() throws {
@@ -55,10 +90,30 @@ final class ClipboardStore {
         let all = try fetchLatest(limit: Int.max)
         guard all.count > maxCount else { return }
 
-        for entry in all.dropFirst(maxCount) {
+        let kept = all.prefix(maxCount)
+        let toDelete = all.dropFirst(maxCount)
+
+        let keptImagePaths: Set<String> = Set(
+            kept.compactMap { entry in
+                guard entry.kindRaw == "image", let path = entry.imagePath else { return nil }
+                return path
+            }
+        )
+        let deleteImagePaths: Set<String> = Set(
+            toDelete.compactMap { entry in
+                guard entry.kindRaw == "image", let path = entry.imagePath else { return nil }
+                return path
+            }
+        )
+
+        for entry in toDelete {
             context.delete(entry)
         }
         try context.save()
+
+        for path in deleteImagePaths.subtracting(keptImagePaths) {
+            try assetStore.deleteImage(relativePath: path)
+        }
     }
 }
 

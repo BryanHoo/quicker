@@ -24,6 +24,20 @@ final class ClipboardStoreTests: XCTestCase {
         XCTAssertEqual(latest.map(\.text), ["B", "A"])
     }
 
+    func testInsertSetsKindAndContentHashForText() throws {
+        let container = try makeInMemoryContainer()
+        let store = ClipboardStore(
+            modelContainer: container,
+            preferences: PreferencesStore(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+        )
+
+        _ = try store.insert(text: "A")
+
+        let entry = try XCTUnwrap(store.fetchLatest(limit: 1).first)
+        XCTAssertEqual(entry.kindRaw, "text")
+        XCTAssertNotNil(entry.contentHash)
+    }
+
     func testDedupeAdjacentEnabled() throws {
         let container = try makeInMemoryContainer()
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
@@ -67,4 +81,3 @@ final class ClipboardStoreTests: XCTestCase {
         XCTAssertEqual(try store.fetchLatest(limit: 10).count, 0)
     }
 }
-
