@@ -11,13 +11,12 @@ struct QuickerApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("Quicker") {
+        MenuBarExtra {
             Button("Open Clipboard Panel") {
                 appState.togglePanel()
             }
-            Button("Settings…") {
-                appState.panelController.close()
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            SettingsLink {
+                Text("Settings…")
             }
             Divider()
             Button("Clear History") {
@@ -25,20 +24,15 @@ struct QuickerApp: App {
             }
             Divider()
             Button("Quit") { NSApp.terminate(nil) }
+        } label: {
+            Image(systemName: "bolt.fill")
+                .symbolRenderingMode(.hierarchical)
+                .accessibilityLabel("Quicker")
         }
 
         Settings {
             SettingsView()
                 .environmentObject(appState)
-        }
-        .commands {
-            CommandGroup(replacing: .appSettings) {
-                Button("Settings…") {
-                    appState.panelController.close()
-                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                }
-                .keyboardShortcut(",", modifiers: [.command])
-            }
         }
     }
 }

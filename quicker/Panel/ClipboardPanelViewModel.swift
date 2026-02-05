@@ -45,6 +45,11 @@ final class ClipboardPanelViewModel: ObservableObject {
         selectedIndexInPage = min(maxIndex, selectedIndexInPage + 1)
     }
 
+    func selectIndexInPage(_ index: Int) {
+        let maxIndex = max(0, visibleEntries.count - 1)
+        selectedIndexInPage = min(max(0, index), maxIndex)
+    }
+
     func previousPage() {
         pageIndex = max(0, pageIndex - 1)
         selectedIndexInPage = 0
@@ -62,4 +67,3 @@ final class ClipboardPanelViewModel: ObservableObject {
         return entries[absolute]
     }
 }
-

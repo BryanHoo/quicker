@@ -1570,13 +1570,14 @@ private final class KeyCatcherView: NSView {
 
 Add `quicker/Panel/ClipboardPanelView.swift`:
 ```swift
+import AppKit
 import SwiftUI
 
 struct ClipboardPanelView: View {
     @ObservedObject var viewModel: ClipboardPanelViewModel
+    @Environment(\.openSettings) private var openSettings
     var onClose: () -> Void
     var onPaste: (String) -> Void
-    var onOpenSettings: () -> Void
 
     var body: some View {
         ZStack {
@@ -1643,9 +1644,13 @@ struct ClipboardPanelView: View {
             return
         }
 
-        // 重要：面板内 `⌘,` 需要关闭面板并打开设置（否则会被 key catcher 吞掉，CommandGroup 不会触发）
+        // 重要：面板内 `⌘,` 需要关闭面板并打开 Settings scene（不会经过 app menu 的默认 `⌘,`）
         if event.modifierFlags.contains(.command), event.charactersIgnoringModifiers == "," {
-            onOpenSettings()
+            onClose()
+            DispatchQueue.main.async {
+                NSApp.activate(ignoringOtherApps: true)
+                openSettings()
+            }
             return
         }
 
@@ -1763,10 +1768,6 @@ final class PanelController: NSObject, NSWindowDelegate {
                 guard let self else { return }
                 self.close()
                 self.onPaste(text, self.previousFrontmostApp)
-            },
-            onOpenSettings: { [weak self] in
-                self?.close()
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
             }
         )
 
@@ -2319,9 +2320,8 @@ struct QuickerApp: App {
             Button("Open Clipboard Panel") {
                 appState.togglePanel()
             }
-            Button("Settings…") {
-                appState.panelController.close()
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            SettingsLink {
+                Text("Settings…")
             }
             Divider()
             Button("Clear History") {
@@ -2334,15 +2334,6 @@ struct QuickerApp: App {
         Settings {
             SettingsView()
                 .environmentObject(appState)
-        }
-        .commands {
-            CommandGroup(replacing: .appSettings) {
-                Button("Settings…") {
-                    appState.panelController.close()
-                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                }
-                .keyboardShortcut(",", modifiers: [.command])
-            }
         }
     }
 }

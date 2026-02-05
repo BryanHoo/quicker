@@ -2,33 +2,61 @@ import AppKit
 import SwiftUI
 
 struct ClipboardPanelView: View {
+    private typealias Theme = QuickerTheme.ClipboardPanel
+
     @ObservedObject var viewModel: ClipboardPanelViewModel
+    @Environment(\.openSettings) private var openSettings
     var onClose: () -> Void
     var onPaste: (String) -> Void
-    var onOpenSettings: () -> Void
+    private let sectionSpacing: CGFloat = Theme.sectionSpacing
 
     var body: some View {
         ZStack {
             KeyEventHandlingView { event in
                 handleKeyDown(event)
             }
-            VStack(alignment: .leading, spacing: 10) {
+
+            VStack(alignment: .leading, spacing: 0) {
                 header
+                    .padding(.bottom, sectionSpacing)
+
+                dividerLine
+
                 content
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.vertical, sectionSpacing)
+
+                dividerLine
+
+                footer
+                    .padding(.top, sectionSpacing)
             }
-            .padding(16)
-            .frame(width: 520, height: 240)
+            .padding(Theme.containerPadding)
+            .frame(width: Theme.size.width, height: Theme.size.height, alignment: .topLeading)
+            .background(Theme.background)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(Theme.borderOpacity), lineWidth: 1)
+            )
+            .shadow(
+                color: .black.opacity(Theme.shadowOpacity),
+                radius: Theme.shadowRadius,
+                x: Theme.shadowOffset.width,
+                y: Theme.shadowOffset.height
+            )
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
         }
     }
 
     private var header: some View {
-        HStack {
-            Text("Clipboard")
-                .font(.headline)
-            Spacer()
-            Text(pageLabel)
-                .font(.subheadline)
+        HStack(spacing: 10) {
+            Image(systemName: "doc.on.clipboard")
+                .font(Theme.headerFont)
                 .foregroundStyle(.secondary)
+            Text("剪贴板")
+                .font(Theme.headerFont)
+            Spacer()
+            KeyHint(symbol: "⌘,", description: "设置")
         }
     }
 
@@ -41,29 +69,57 @@ struct ClipboardPanelView: View {
     private var content: some View {
         Group {
             if viewModel.entries.isEmpty {
-                Text("暂无历史记录")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-            } else {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(Array(viewModel.visibleEntries.enumerated()), id: \.offset) { idx, text in
-                        row(text: text, isSelected: idx == viewModel.selectedIndexInPage)
-                    }
-                    Spacer()
+                if #available(macOS 14.0, *) {
+                    ContentUnavailableView("暂无历史记录", systemImage: "doc.on.clipboard")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    Text("暂无历史记录")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 }
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 4) {
+                        ForEach(Array(viewModel.visibleEntries.enumerated()), id: \.offset) { idx, text in
+                            ClipboardEntryRow(
+                                text: text,
+                                cmdNumber: idx + 1,
+                                isSelected: idx == viewModel.selectedIndexInPage,
+                                onSelect: {
+                                    viewModel.selectIndexInPage(idx)
+                                }
+                            )
+                        }
+                    }
+                }
+                .scrollIndicators(.hidden)
+                .scrollContentBackground(.hidden)
+                .animation(.easeOut(duration: 0.12), value: viewModel.selectedIndexInPage)
             }
         }
     }
 
-    private func row(text: String, isSelected: Bool) -> some View {
-        Text(text)
-            .lineLimit(1)
-            .truncationMode(.tail)
-            .padding(.vertical, 6)
-            .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(isSelected ? Color.accentColor.opacity(0.18) : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+    private var footer: some View {
+        HStack(spacing: 14) {
+            KeyHint(symbol: "Esc", description: "关闭")
+            KeyHint(symbol: "Enter", description: "粘贴")
+            KeyHint(symbol: "↑↓", description: "选择")
+            KeyHint(symbol: "←→", description: "翻页")
+            Spacer()
+            Text(pageLabel)
+                .font(Theme.pageLabelFont)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(.quaternary.opacity(Theme.pagePillBackgroundOpacity), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+    }
+
+    private var dividerLine: some View {
+        Rectangle()
+            .fill(Color.primary.opacity(Theme.dividerOpacity))
+            .frame(height: 1)
     }
 
     private func handleKeyDown(_ event: NSEvent) {
@@ -73,7 +129,11 @@ struct ClipboardPanelView: View {
         }
 
         if event.modifierFlags.contains(.command), event.charactersIgnoringModifiers == "," {
-            onOpenSettings()
+            onClose()
+            DispatchQueue.main.async {
+                NSApp.activate(ignoringOtherApps: true)
+                openSettings()
+            }
             return
         }
 
@@ -98,3 +158,66 @@ struct ClipboardPanelView: View {
     }
 }
 
+private struct ClipboardEntryRow: View {
+    private typealias Theme = QuickerTheme.ClipboardPanel
+
+    let text: String
+    let cmdNumber: Int
+    let isSelected: Bool
+    var onSelect: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(text)
+                .font(Theme.rowTextFont)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text("⌘\(cmdNumber)")
+                .font(Theme.rowCommandFont)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 7)
+        .padding(.horizontal, 10)
+        .background(
+            ZStack {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .fill(Color.accentColor.opacity(Theme.selectedFillOpacity))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                .strokeBorder(Color.accentColor.opacity(Theme.selectedBorderOpacity), lineWidth: 1)
+                        )
+                }
+            }
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .onTapGesture { onSelect() }
+    }
+}
+
+private struct KeyHint: View {
+    private typealias Theme = QuickerTheme.ClipboardPanel
+
+    let symbol: String
+    let description: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(symbol)
+                .font(Theme.hintSymbolFont)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(.quaternary.opacity(Theme.keyCapBackgroundOpacity), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(Theme.keyCapBorderOpacity), lineWidth: 1)
+                )
+
+            Text(description)
+                .font(Theme.hintTextFont)
+                .foregroundStyle(.secondary)
+        }
+    }
+}

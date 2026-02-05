@@ -11,32 +11,38 @@ struct ClipboardSettingsView: View {
     var body: some View {
         Form {
             Section("历史") {
-                Stepper(value: $maxHistoryCount, in: 0...5000, step: 10) {
-                    Text("最大历史条数：\(maxHistoryCount)")
+                LabeledContent("最大条数") {
+                    Stepper(value: $maxHistoryCount, in: 0...5000, step: 10) {
+                        Text("\(maxHistoryCount)")
+                            .monospacedDigit()
+                    }
+                    .frame(maxWidth: 180, alignment: .trailing)
                 }
+
                 Toggle("相邻去重", isOn: $dedupeAdjacentEnabled)
-                Button("立即保存") { save() }
+
+                Text("修改会立即生效：会自动裁剪到最新 N 条。")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
 
             Section("忽略应用") {
-                Button("选择应用…") { pickApp() }
+                HStack {
+                    Text("不记录这些应用产生的剪贴板内容。")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("选择应用…") { pickApp() }
+                }
+
                 List {
                     ForEach(ignoredApps, id: \.bundleIdentifier) { app in
-                        HStack(spacing: 8) {
-                            if let path = app.appPath {
-                                Image(nsImage: NSWorkspace.shared.icon(forFile: path))
-                                    .resizable()
-                                    .frame(width: 20, height: 20)
-                            }
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(app.displayName ?? app.bundleIdentifier)
-                                Text(app.bundleIdentifier).font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
+                        IgnoredAppRow(app: app)
                     }
                     .onDelete(perform: deleteApps)
                 }
-                .frame(height: 140)
+                .listStyle(.inset)
+                .frame(height: 160)
             }
 
             Section("隐私与权限") {
@@ -61,20 +67,22 @@ struct ClipboardSettingsView: View {
                     }
             }
         }
+        .formStyle(.grouped)
         .onAppear(perform: load)
+        .onChange(of: maxHistoryCount) { _ in
+            appState.preferences.maxHistoryCount = maxHistoryCount
+            try? appState.clipboardStore.trimToMaxCount()
+            appState.refreshPanelEntries()
+        }
+        .onChange(of: dedupeAdjacentEnabled) { _ in
+            appState.preferences.dedupeAdjacentEnabled = dedupeAdjacentEnabled
+        }
     }
 
     private func load() {
         maxHistoryCount = appState.preferences.maxHistoryCount
         dedupeAdjacentEnabled = appState.preferences.dedupeAdjacentEnabled
         ignoredApps = appState.ignoreAppStore.all()
-    }
-
-    private func save() {
-        appState.preferences.maxHistoryCount = maxHistoryCount
-        appState.preferences.dedupeAdjacentEnabled = dedupeAdjacentEnabled
-        try? appState.clipboardStore.trimToMaxCount()
-        appState.refreshPanelEntries()
     }
 
     private func pickApp() {
@@ -99,3 +107,40 @@ struct ClipboardSettingsView: View {
     }
 }
 
+private struct IgnoredAppRow: View {
+    let app: IgnoredApp
+
+    var body: some View {
+        HStack(spacing: 10) {
+            AppIcon(path: app.appPath)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(app.displayName ?? app.bundleIdentifier)
+                    .lineLimit(1)
+                Text(app.bundleIdentifier)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+private struct AppIcon: View {
+    let path: String?
+
+    var body: some View {
+        Group {
+            if let path {
+                Image(nsImage: NSWorkspace.shared.icon(forFile: path))
+                    .resizable()
+            } else {
+                Image(systemName: "app")
+                    .resizable()
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 22, height: 22)
+        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+    }
+}

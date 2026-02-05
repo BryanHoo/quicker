@@ -41,6 +41,8 @@ final class PanelController: NSObject, NSWindowDelegate {
     }
 
     private func makePanel() -> CenteredPanel {
+        let size = QuickerTheme.ClipboardPanel.size
+
         let content = ClipboardPanelView(
             viewModel: viewModel,
             onClose: { [weak self] in
@@ -50,23 +52,19 @@ final class PanelController: NSObject, NSWindowDelegate {
                 guard let self else { return }
                 self.close()
                 self.onPaste(text, self.previousFrontmostApp)
-            },
-            onOpenSettings: { [weak self] in
-                self?.close()
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
             }
         )
 
         let hosting = NSHostingController(rootView: content)
         let panel = CenteredPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 240),
-            styleMask: [.titled, .fullSizeContentView],
+            contentRect: NSRect(x: 0, y: 0, width: size.width, height: size.height),
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
-        panel.titleVisibility = .hidden
-        panel.titlebarAppearsTransparent = true
-        panel.isMovableByWindowBackground = true
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = false
         panel.level = .floating
         panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -91,4 +89,3 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel.setFrameOrigin(origin)
     }
 }
-

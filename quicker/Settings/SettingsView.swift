@@ -1,22 +1,48 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @State private var tab: String = "general"
+    private enum Tab: String, Hashable {
+        case general
+        case clipboard
+        case about
+    }
+
+    @State private var tab: Tab = .general
 
     var body: some View {
         TabView(selection: $tab) {
-            GeneralSettingsView()
-                .tabItem { Text("通用") }
-                .tag("general")
-            ClipboardSettingsView()
-                .tabItem { Text("剪切板") }
-                .tag("clipboard")
-            AboutView()
-                .tabItem { Text("关于") }
-                .tag("about")
+            SettingsPage {
+                GeneralSettingsView()
+            }
+            .tabItem { Label("通用", systemImage: "gearshape") }
+            .tag(Tab.general)
+
+            SettingsPage {
+                ClipboardSettingsView()
+            }
+            .tabItem { Label("剪切板", systemImage: "doc.on.clipboard") }
+            .tag(Tab.clipboard)
+
+            SettingsPage {
+                AboutView()
+            }
+            .tabItem { Label("关于", systemImage: "info.circle") }
+            .tag(Tab.about)
         }
-        .padding(16)
-        .frame(width: 560, height: 420)
+        .frame(width: 620, height: 460)
     }
 }
 
+private struct SettingsPage<Content: View>: View {
+    private let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(16)
+    }
+}

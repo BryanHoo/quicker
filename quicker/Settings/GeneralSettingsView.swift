@@ -8,30 +8,39 @@ struct GeneralSettingsView: View {
 
     var body: some View {
         Form {
-            Section("唤出快捷键") {
-                HStack {
-                    Text("当前：\(hotkeyDisplay)")
-                    Spacer()
-                    Button("修改…") { isRecordingHotkey = true }
+            Section("唤出") {
+                LabeledContent("快捷键") {
+                    HStack(spacing: 10) {
+                        Text(hotkeyDisplay)
+                            .monospacedDigit()
+                            .foregroundStyle(.primary)
+                        Button("修改…") { isRecordingHotkey = true }
+                    }
                 }
+
                 if appState.hotkeyRegisterStatus != noErr {
-                    Text("可能与系统/其他应用冲突，建议换一个组合。")
+                    Text("快捷键可能与系统或其他应用冲突，建议换一个组合。")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("建议包含 ⌘，避免与常用输入快捷键冲突。")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
             }
 
-            Section("开机自启") {
-                Text("MVP：下一步接入 SMAppService")
+            Section("启动") {
+                Text("开机自启：MVP 暂未接入（计划使用 SMAppService）。")
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
         }
+        .formStyle(.grouped)
         .onAppear { hotkey = appState.preferences.hotkey }
         .sheet(isPresented: $isRecordingHotkey) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("按下新的快捷键（建议包含 ⌘）").font(.headline)
-                Text("按 Esc 取消").foregroundStyle(.secondary)
-                HotkeyRecorderView { event in
+            HotkeyRecorderSheet(
+                onCancel: { isRecordingHotkey = false },
+                onCapture: { event in
                     if event.keyCode == 53 { // Esc
                         isRecordingHotkey = false
                         return
@@ -45,16 +54,13 @@ struct GeneralSettingsView: View {
                     appState.applyHotkey(captured)
                     isRecordingHotkey = false
                 }
-                Spacer()
-            }
-            .padding(16)
-            .frame(width: 420, height: 180)
+            )
         }
     }
 
     private var hotkeyDisplay: String {
         if hotkey == .default { return "⌘⇧V" }
-        return "keyCode \(hotkey.keyCode)"
+        return "键码 \(hotkey.keyCode)"
     }
 
     private func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
@@ -67,3 +73,52 @@ struct GeneralSettingsView: View {
     }
 }
 
+private struct HotkeyRecorderSheet: View {
+    var onCancel: () -> Void
+    var onCapture: (NSEvent) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Image(systemName: "keyboard")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("按下新的快捷键")
+                        .font(.headline)
+                    Text("按 Esc 取消；建议包含 ⌘")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(.quaternary.opacity(0.35))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(.quaternary, lineWidth: 1)
+                )
+                .frame(height: 60)
+                .overlay(
+                    Text("正在监听键盘输入…")
+                        .foregroundStyle(.secondary)
+                )
+
+            HStack {
+                Spacer()
+                Button("取消") { onCancel() }
+                    .keyboardShortcut(.cancelAction)
+            }
+
+            HotkeyRecorderView { event in
+                onCapture(event)
+            }
+            .frame(width: 1, height: 1)
+            .opacity(0.01)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
+        .padding(16)
+        .frame(width: 440, height: 210)
+    }
+}
