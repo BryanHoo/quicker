@@ -2,15 +2,31 @@ import Foundation
 
 protocol ClipboardStoreInserting {
     func insert(text: String)
+    func insertRTF(rtfData: Data, plainText: String, contentHash: String)
+    func insertImage(pngData: Data, contentHash: String)
 }
 
 struct ClipboardMonitorLogic {
     let ignoreAppStore: IgnoreAppStore
     let clipboardStore: ClipboardStoreInserting
 
-    func handleClipboardTextChange(text: String, frontmostBundleId: String?) {
+    func handleCapturedChange(_ captured: CapturedClipboardContent, frontmostBundleId: String?) {
         guard ignoreAppStore.isIgnored(bundleIdentifier: frontmostBundleId) == false else { return }
-        clipboardStore.insert(text: text)
+
+        switch captured.kind {
+        case .text:
+            clipboardStore.insert(text: captured.plainText)
+        case .rtf:
+            if let rtf = captured.rtfData {
+                clipboardStore.insertRTF(rtfData: rtf, plainText: captured.plainText, contentHash: captured.contentHash)
+            } else {
+                clipboardStore.insert(text: captured.plainText)
+            }
+        case .image:
+            if let png = captured.pngData {
+                clipboardStore.insertImage(pngData: png, contentHash: captured.contentHash)
+            }
+        }
     }
 }
 
@@ -50,7 +66,8 @@ final class ClipboardMonitor {
         guard current != lastChangeCount else { return }
         lastChangeCount = current
 
-        guard let text = pasteboard.readString() else { return }
-        logic.handleClipboardTextChange(text: text, frontmostBundleId: frontmostAppProvider.frontmostBundleIdentifier)
+        guard let snapshot = pasteboard.readSnapshot() else { return }
+        guard let captured = PasteboardCaptureLogic().capture(snapshot: snapshot) else { return }
+        logic.handleCapturedChange(captured, frontmostBundleId: frontmostAppProvider.frontmostBundleIdentifier)
     }
 }

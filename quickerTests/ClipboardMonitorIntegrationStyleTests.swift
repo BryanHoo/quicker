@@ -26,6 +26,8 @@ final class ClipboardMonitorIntegrationStyleTests: XCTestCase {
 private final class SpyInsertStore: ClipboardStoreInserting {
     var inserted: [String] = []
     func insert(text: String) { inserted.append(text) }
+    func insertRTF(rtfData: Data, plainText: String, contentHash: String) {}
+    func insertImage(pngData: Data, contentHash: String) {}
 }
 
 private final class FakePasteboardClient: PasteboardClient {
@@ -35,11 +37,20 @@ private final class FakePasteboardClient: PasteboardClient {
         self.text = text
         self.changeCount = changeCount
     }
-    func readString() -> String? { text }
+    func readSnapshot() -> PasteboardSnapshot? {
+        PasteboardSnapshot(items: [
+            PasteboardSnapshot.Item(
+                typeIdentifiers: ["public.utf8-plain-text"],
+                pngData: nil,
+                tiffData: nil,
+                rtfData: nil,
+                string: text
+            ),
+        ])
+    }
 }
 
 private struct FakeFrontmostAppProvider: FrontmostAppProviding {
     let bundleId: String?
     var frontmostBundleIdentifier: String? { bundleId }
 }
-

@@ -121,4 +121,14 @@ extension ClipboardStore: ClipboardStoreInserting {
     func insert(text: String) {
         try? insert(text: text, now: .now)
     }
+
+    func insertRTF(rtfData: Data, plainText: String, contentHash: String) {
+        // 占位实现：完整逻辑在后续 spawn_agent 补齐
+        try? insert(text: plainText, now: .now)
+    }
+
+    func insertImage(pngData: Data, contentHash: String) {
+        // 占位实现：完整逻辑在后续 spawn_agent 补齐
+        try? insert(text: "图片", now: .now)
+    }
 }
