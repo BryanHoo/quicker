@@ -56,6 +56,18 @@
   - `ClipboardStore.trimToMaxCount()` 删除被裁剪的条目时同步删除 `imagePath`
   - 若文件名复用（同 hash），删除前需确认没有其他条目仍引用该 `imagePath`
 
+### 4.1 图片大小与磁盘护栏（推荐）
+
+为避免“连续复制大尺寸截图/大图”导致磁盘膨胀与面板卡顿，建议加入硬性护栏（后续也可开放为设置项）：
+
+- 单图上限：
+  - `maxStoredImageBytes`（例如 20MB）
+  - `maxStoredImageMaxPixel`（例如长边 4096px）
+- 处理策略：
+  1) 若原图长边超过 `maxStoredImageMaxPixel`：使用 Image I/O 下采样/生成缩放图后再编码为 PNG 存盘（详见 5.3）。
+  2) 若最终 `pngData.count > maxStoredImageBytes`：跳过记录该图片（仅本次不写入历史），并记录日志/轻提示（避免用户误以为“历史坏了”）。
+- 目录配额（可选增强）：限制 `clipboard-assets/` 目录总大小（例如 1GB），超出后按最旧条目顺序清理无引用图片文件。
+
 ## 5. 剪贴板采集（监听 NSPasteboard）
 
 将 `PasteboardClient`（`quicker/Clipboard/PasteboardClient.swift`）从 `readString()` 升级为读取结构化内容：
@@ -85,7 +97,12 @@
 
 ### 5.3 TIFF → PNG
 
-- 若只有 `.tiff`：用 `NSImage(data:)` + `NSBitmapImageRep` 转为 `pngData` 再落盘
+- 若只有 `.tiff`：优先使用 Image I/O（避免 `NSImage` 解码带来的额外内存与主线程依赖）
+  - `CGImageSourceCreateWithData(tiffData as CFData, options)`
+  - 需要缩放时用 `CGImageSourceCreateThumbnailAtIndex(..., options)`（配置 `kCGImageSourceThumbnailMaxPixelSize` + `kCGImageSourceCreateThumbnailWithTransform`）
+  - 不需要缩放时用 `CGImageSourceCreateImageAtIndex(...)`
+  - `CGImageDestinationCreateWithData` + `CGImageDestinationAddImage` + `CGImageDestinationFinalize` 编码得到 `pngData`
+  - 仅在 Image I/O 失败时才回退 `NSImage(data:)` + `NSBitmapImageRep`（兼容极少数异常数据）
 - 性能：图片解码、转换、`SHA256` 计算、落盘应尽量在非主线程完成，避免阻塞 UI；最终插入 SwiftData 时再切回 `@MainActor`。
 
 ### 5.4 去重（相邻）
@@ -95,6 +112,16 @@
   - `.rtf`：对 `rtfData` 做 `SHA256`
   - `.image`：对 `pngData` 做 `SHA256`
 - 相邻去重判断改为：若 `latest.kindRaw` 与 `contentHash` 相同则跳过
+
+### 5.5 多 item（`pasteboardItems`）处理策略
+
+`NSPasteboard` 一次变更可能包含多个 `NSPasteboardItem`（例如一次复制多段文本、或多文件拖拽/复制）。本项目（MVP）建议：
+
+- 每次变更只生成 **一条** 历史记录（避免 UI/模型复杂度爆炸）。
+- 选取策略：
+  1) 在 `pasteboard.pasteboardItems` 中按顺序寻找第一个可识别内容，按优先级：image > rtf > string。
+  2) 若没有 image/rtf，且存在多个 item 都可读 `.string`：将所有字符串用 `"\n"` 拼接为一个 `.text` 条目（更贴近“复制多行/多段”的用户预期）。
+  3) 其余情况：仅记录第一个匹配 item，其它 item 忽略。
 
 ## 6. 面板展示（预览）
 
@@ -115,7 +142,7 @@
 - `.rtf`：写 `.rtf`，并同时写 `.string`（降级）
 - `.image`：读取 `imagePath` 对应 png，写 `.png`；可选补写 `.tiff`（提升兼容性）
 - 写入方式建议：使用 `NSPasteboardItem` 在一个 item 内同时设置多个 representation（例如 `.rtf` + `.string`），然后 `pasteboard.clearContents()` + `pasteboard.writeObjects([item])`，减少“部分类型写入失败”导致的兼容性问题。
-- 兼容性可选增强：除 `.string` 外，可额外写入 legacy 的 `"NSStringPboardType"`，以提高与部分 `NSTextView`/Services 的粘贴互操作性。
+- 兼容性说明：`NSStringPboardType` 等 legacy type 已被视为过时类型（有现代等价物）；本项目目标 macOS 14+，默认不写入这些 legacy type，仅在确有兼容性需求时再评估。
 
 保持现有权限逻辑：
 
