@@ -6,7 +6,6 @@ struct ClipboardSettingsView: View {
     @State private var maxHistoryCount: Int = PreferencesKeys.maxHistoryCount.defaultValue
     @State private var dedupeAdjacentEnabled: Bool = PreferencesKeys.dedupeAdjacentEnabled.defaultValue
     @State private var ignoredApps: [IgnoredApp] = []
-    @State private var ignoredSelection = Set<String>()
     @State private var isConfirmingClearHistory = false
 
     var body: some View {
@@ -50,19 +49,32 @@ struct ClipboardSettingsView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Button("移除") { removeSelectedApps() }
-                        .disabled(ignoredSelection.isEmpty)
                     Button("选择应用…") { pickApp() }
                 }
 
-                if ignoredApps.isEmpty {
-                    ContentUnavailableView {
-                        Label("未添加忽略应用", systemImage: "app.dashed")
-                    } description: {
-                        Text("添加后将不会记录这些应用产生的剪贴板内容。")
+                if ignoredApps.isEmpty == false {
+                    VStack(spacing: 0) {
+                        ForEach(ignoredApps, id: \.bundleIdentifier) { app in
+                            HStack(spacing: 12) {
+                                IgnoredAppRow(app: app)
+                                Spacer(minLength: 0)
+                                Button {
+                                    removeApp(bundleIdentifier: app.bundleIdentifier)
+                                } label: {
+                                    Image(systemName: "minus.circle")
+                                }
+                                .buttonStyle(.borderless)
+                                .foregroundStyle(.secondary)
+                                .help("移除")
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+
+                            if app.bundleIdentifier != ignoredApps.last?.bundleIdentifier {
+                                Divider()
+                            }
+                        }
                     }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 160)
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .fill(Color(nsColor: .controlBackgroundColor))
@@ -71,19 +83,6 @@ struct ClipboardSettingsView: View {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .strokeBorder(.quaternary, lineWidth: 1)
                     )
-                } else {
-                    List(selection: $ignoredSelection) {
-                        ForEach(ignoredApps, id: \.bundleIdentifier) { app in
-                            IgnoredAppRow(app: app)
-                                .tag(app.bundleIdentifier)
-                                .contextMenu {
-                                    Button("移除") { removeApp(bundleIdentifier: app.bundleIdentifier) }
-                                }
-                        }
-                        .onDelete(perform: deleteApps)
-                    }
-                    .listStyle(.inset)
-                    .frame(height: 160)
                 }
             }
 
@@ -115,7 +114,6 @@ struct ClipboardSettingsView: View {
         maxHistoryCount = appState.preferences.maxHistoryCount
         dedupeAdjacentEnabled = appState.preferences.dedupeAdjacentEnabled
         ignoredApps = appState.ignoreAppStore.all()
-        ignoredSelection.removeAll()
     }
 
     private func pickApp() {
@@ -130,7 +128,6 @@ struct ClipboardSettingsView: View {
 
         try? appState.ignoreAppStore.add(bundleIdentifier: bundleId, displayName: name, appPath: url.path)
         ignoredApps = appState.ignoreAppStore.all()
-        ignoredSelection.removeAll()
     }
 
     private func deleteApps(at offsets: IndexSet) {
@@ -138,21 +135,11 @@ struct ClipboardSettingsView: View {
             appState.ignoreAppStore.remove(bundleIdentifier: ignoredApps[i].bundleIdentifier)
         }
         ignoredApps = appState.ignoreAppStore.all()
-        ignoredSelection.removeAll()
-    }
-
-    private func removeSelectedApps() {
-        for bundleId in ignoredSelection {
-            appState.ignoreAppStore.remove(bundleIdentifier: bundleId)
-        }
-        ignoredApps = appState.ignoreAppStore.all()
-        ignoredSelection.removeAll()
     }
 
     private func removeApp(bundleIdentifier: String) {
         appState.ignoreAppStore.remove(bundleIdentifier: bundleIdentifier)
         ignoredApps = appState.ignoreAppStore.all()
-        ignoredSelection.removeAll()
     }
 }
 
