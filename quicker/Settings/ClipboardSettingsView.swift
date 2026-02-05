@@ -6,6 +6,7 @@ struct ClipboardSettingsView: View {
     @State private var maxHistoryCount: Int = PreferencesKeys.maxHistoryCount.defaultValue
     @State private var dedupeAdjacentEnabled: Bool = PreferencesKeys.dedupeAdjacentEnabled.defaultValue
     @State private var ignoredApps: [IgnoredApp] = []
+    @State private var ignoredSelection = Set<String>()
     @State private var isConfirmingClearHistory = false
 
     var body: some View {
@@ -49,12 +50,18 @@ struct ClipboardSettingsView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Spacer()
+                    Button("移除") { removeSelectedApps() }
+                        .disabled(ignoredSelection.isEmpty)
                     Button("选择应用…") { pickApp() }
                 }
 
-                List {
+                List(selection: $ignoredSelection) {
                     ForEach(ignoredApps, id: \.bundleIdentifier) { app in
                         IgnoredAppRow(app: app)
+                            .tag(app.bundleIdentifier)
+                            .contextMenu {
+                                Button("移除") { removeApp(bundleIdentifier: app.bundleIdentifier) }
+                            }
                     }
                     .onDelete(perform: deleteApps)
                 }
@@ -90,6 +97,7 @@ struct ClipboardSettingsView: View {
         maxHistoryCount = appState.preferences.maxHistoryCount
         dedupeAdjacentEnabled = appState.preferences.dedupeAdjacentEnabled
         ignoredApps = appState.ignoreAppStore.all()
+        ignoredSelection.removeAll()
     }
 
     private func pickApp() {
@@ -104,6 +112,7 @@ struct ClipboardSettingsView: View {
 
         try? appState.ignoreAppStore.add(bundleIdentifier: bundleId, displayName: name, appPath: url.path)
         ignoredApps = appState.ignoreAppStore.all()
+        ignoredSelection.removeAll()
     }
 
     private func deleteApps(at offsets: IndexSet) {
@@ -111,6 +120,21 @@ struct ClipboardSettingsView: View {
             appState.ignoreAppStore.remove(bundleIdentifier: ignoredApps[i].bundleIdentifier)
         }
         ignoredApps = appState.ignoreAppStore.all()
+        ignoredSelection.removeAll()
+    }
+
+    private func removeSelectedApps() {
+        for bundleId in ignoredSelection {
+            appState.ignoreAppStore.remove(bundleIdentifier: bundleId)
+        }
+        ignoredApps = appState.ignoreAppStore.all()
+        ignoredSelection.removeAll()
+    }
+
+    private func removeApp(bundleIdentifier: String) {
+        appState.ignoreAppStore.remove(bundleIdentifier: bundleIdentifier)
+        ignoredApps = appState.ignoreAppStore.all()
+        ignoredSelection.removeAll()
     }
 }
 
