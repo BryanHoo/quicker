@@ -123,13 +123,19 @@ private extension AppState {
         items.map { entry in
             switch ClipboardEntryKind(raw: entry.kindRaw) {
             case .text:
-                ClipboardPanelEntry(kind: .text, previewText: entry.text, rtfData: nil, imagePath: nil)
+                ClipboardPanelEntry(kind: .text, previewText: entry.text, createdAt: entry.createdAt, rtfData: nil, imagePath: nil)
             case .rtf:
-                ClipboardPanelEntry(kind: .rtf, previewText: entry.text, rtfData: entry.rtfData, imagePath: nil)
+                ClipboardPanelEntry(kind: .rtf, previewText: entry.text, createdAt: entry.createdAt, rtfData: entry.rtfData, imagePath: nil)
             case .image:
-                ClipboardPanelEntry(kind: .image, previewText: "图片", rtfData: nil, imagePath: entry.imagePath)
+                ClipboardPanelEntry(kind: .image, previewText: imagePreviewName(from: entry.imagePath), createdAt: entry.createdAt, rtfData: nil, imagePath: entry.imagePath)
             }
         }
+    }
+
+    static func imagePreviewName(from imagePath: String?) -> String {
+        guard let imagePath, imagePath.isEmpty == false else { return "图片" }
+        let name = URL(fileURLWithPath: imagePath).lastPathComponent
+        return name.isEmpty ? "图片" : name
     }
 
     static func makePasteEntry(from entry: ClipboardPanelEntry) -> ClipboardEntry {

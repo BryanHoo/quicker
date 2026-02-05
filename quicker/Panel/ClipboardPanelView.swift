@@ -1,4 +1,5 @@
 import AppKit
+import Foundation
 import ImageIO
 import SwiftUI
 
@@ -167,23 +168,42 @@ private struct ClipboardEntryRow: View {
     let isSelected: Bool
     var onSelect: () -> Void
 
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "MM-dd HH:mm"
+        return f
+    }()
+
+    private var createdAtText: String {
+        Self.timeFormatter.string(from: entry.createdAt)
+    }
+
     var body: some View {
         HStack(spacing: 10) {
-            if entry.kind == .image {
-                ClipboardImageThumbnail(imagePath: entry.imagePath)
+            leading
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 8) {
+                    Text(entry.previewText)
+                        .font(Theme.rowTextFont)
+                        .lineLimit(1)
+                        .truncationMode(entry.kind == .image ? .middle : .tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .help(entry.previewText)
+
+                    Text("⌘\(cmdNumber)")
+                        .font(Theme.rowCommandFont)
+                        .foregroundStyle(.secondary)
+                }
+
+                Text(createdAtText)
+                    .font(Theme.rowMetaFont)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
             }
-
-            Text(entry.previewText)
-                .font(Theme.rowTextFont)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            Text("⌘\(cmdNumber)")
-                .font(Theme.rowCommandFont)
-                .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 7)
+        .padding(.vertical, Theme.rowVerticalPadding)
         .padding(.horizontal, 10)
         .background(
             ZStack {
@@ -200,9 +220,23 @@ private struct ClipboardEntryRow: View {
         .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .onTapGesture { onSelect() }
     }
+
+    @ViewBuilder
+    private var leading: some View {
+        switch entry.kind {
+        case .image:
+            ClipboardImageThumbnail(imagePath: entry.imagePath)
+        case .rtf:
+            ClipboardKindIcon(systemName: "doc.richtext")
+        case .text:
+            ClipboardKindIcon(systemName: "text.alignleft")
+        }
+    }
 }
 
 private struct ClipboardImageThumbnail: View {
+    private typealias Theme = QuickerTheme.ClipboardPanel
+
     let imagePath: String?
 
     @State private var thumbnail: NSImage?
@@ -220,7 +254,7 @@ private struct ClipboardImageThumbnail: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .frame(width: 32, height: 32)
+        .frame(width: Theme.rowLeadingSize, height: Theme.rowLeadingSize)
         .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .task(id: imagePath) {
@@ -242,6 +276,23 @@ private struct ClipboardImageThumbnail: View {
 
         guard let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, thumbOpts as CFDictionary) else { return nil }
         return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+    }
+}
+
+private struct ClipboardKindIcon: View {
+    private typealias Theme = QuickerTheme.ClipboardPanel
+
+    let systemName: String
+
+    var body: some View {
+        ZStack {
+            Image(systemName: systemName)
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(.secondary)
+        }
+        .frame(width: Theme.rowLeadingSize, height: Theme.rowLeadingSize)
+        .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 

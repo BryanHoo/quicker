@@ -4,16 +4,19 @@ enum QuickerTheme {
     enum ClipboardPanel {
         // MARK: Metrics
 
-        static let size = CGSize(width: 420, height: 276)
+        static let size = CGSize(width: 420, height: 332)
         static let cornerRadius: CGFloat = 16
         static let containerPadding: CGFloat = 14
         static let sectionSpacing: CGFloat = 10
+        static let rowLeadingSize: CGFloat = 32
+        static let rowVerticalPadding: CGFloat = 5
 
         // MARK: Typography
 
         static let headerFont: Font = .system(size: 14, weight: .semibold)
         static let rowTextFont: Font = .system(size: 13)
         static let rowCommandFont: Font = .system(size: 11, weight: .medium, design: .monospaced)
+        static let rowMetaFont: Font = .system(size: 11)
         static let hintSymbolFont: Font = .system(size: 11, weight: .medium, design: .monospaced)
         static let hintTextFont: Font = .system(size: 11)
         static let pageLabelFont: Font = .system(size: 11, weight: .medium, design: .monospaced)
