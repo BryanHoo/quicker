@@ -1,4 +1,6 @@
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 
 struct CapturedClipboardContent: Equatable {
     let kind: ClipboardEntryKind
@@ -9,6 +11,9 @@ struct CapturedClipboardContent: Equatable {
 }
 
 struct PasteboardCaptureLogic {
+    var maxStoredImageBytes: Int = 20 * 1024 * 1024
+    var maxStoredImageMaxPixel: Int = 4096
+
     private let markerTypeIdentifiers: Set<String> = [
         "org.nspasteboard.TransientType",
         "org.nspasteboard.ConcealedType",
@@ -26,6 +31,31 @@ struct PasteboardCaptureLogic {
 
         if let item = snapshot.items.first(where: { $0.pngData != nil || $0.tiffData != nil }) {
             if let png = item.pngData {
+                if png.count > maxStoredImageBytes { return nil }
+
+                let finalPng: Data
+                if let size = ImageIOConvert.pixelSize(data: png), max(size.width, size.height) > maxStoredImageMaxPixel {
+                    guard let converted = ImageIOConvert.makePNG(from: png, maxPixel: maxStoredImageMaxPixel) else { return nil }
+                    finalPng = converted
+                } else {
+                    finalPng = png
+                }
+
+                if finalPng.count > maxStoredImageBytes { return nil }
+
+                return CapturedClipboardContent(
+                    kind: .image,
+                    plainText: "图片",
+                    rtfData: nil,
+                    pngData: finalPng,
+                    contentHash: ContentHash.sha256Hex(finalPng)
+                )
+            }
+
+            if let tiff = item.tiffData {
+                guard let png = ImageIOConvert.makePNG(from: tiff, maxPixel: maxStoredImageMaxPixel) else { return nil }
+                if png.count > maxStoredImageBytes { return nil }
+
                 return CapturedClipboardContent(
                     kind: .image,
                     plainText: "图片",
@@ -34,7 +64,6 @@ struct PasteboardCaptureLogic {
                     contentHash: ContentHash.sha256Hex(png)
                 )
             }
-            // TIFF->PNG 在下一步补齐
         }
 
         if let item = snapshot.items.first(where: { $0.rtfData != nil }), let rtf = item.rtfData {
@@ -59,3 +88,33 @@ struct PasteboardCaptureLogic {
     }
 }
 
+private enum ImageIOConvert {
+    static func pixelSize(data: Data) -> (width: Int, height: Int)? {
+        guard let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        guard let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any] else { return nil }
+        let w = props[kCGImagePropertyPixelWidth] as? Int ?? 0
+        let h = props[kCGImagePropertyPixelHeight] as? Int ?? 0
+        guard w > 0, h > 0 else { return nil }
+        return (w, h)
+    }
+
+    static func makePNG(from imageData: Data, maxPixel: Int) -> Data? {
+        guard let src = CGImageSourceCreateWithData(imageData as CFData, nil) else { return nil }
+
+        let thumbOpts: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+        ]
+
+        let img = CGImageSourceCreateThumbnailAtIndex(src, 0, thumbOpts as CFDictionary)
+            ?? CGImageSourceCreateImageAtIndex(src, 0, nil)
+        guard let img else { return nil }
+
+        let out = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(out, UTType.png.identifier as CFString, 1, nil) else { return nil }
+        CGImageDestinationAddImage(dest, img, nil)
+        guard CGImageDestinationFinalize(dest) else { return nil }
+        return out as Data
+    }
+}
