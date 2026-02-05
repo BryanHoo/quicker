@@ -5,6 +5,7 @@ struct GeneralSettingsView: View {
     @EnvironmentObject private var appState: AppState
     @State private var hotkey: Hotkey = PreferencesKeys.hotkey.defaultValue
     @State private var isRecordingHotkey = false
+    @StateObject private var launch = LaunchAtLoginService()
 
     var body: some View {
         Form {
@@ -30,9 +31,11 @@ struct GeneralSettingsView: View {
             }
 
             Section("启动") {
-                Text("开机自启：MVP 暂未接入（计划使用 SMAppService）。")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Toggle("开机自启", isOn: Binding(
+                    get: { launch.isEnabled },
+                    set: { launch.setEnabled($0) }
+                ))
+                .onAppear { launch.refresh() }
             }
         }
         .formStyle(.grouped)
