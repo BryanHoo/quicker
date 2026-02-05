@@ -61,6 +61,82 @@ final class ClipboardStore {
         return true
     }
 
+    @discardableResult
+    func insertRTF(rtfData: Data, plainText: String, contentHash: String, now: Date = .now) throws -> Bool {
+        let trimmed = plainText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if preferences.dedupeAdjacentEnabled {
+            if let latest = try fetchLatest(limit: 1).first {
+                let latestKind = ClipboardEntryKind(raw: latest.kindRaw)
+                let latestHash: String? = latest.contentHash ?? {
+                    switch latestKind {
+                    case .text:
+                        let text = latest.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        return ContentHash.sha256Hex(Data(text.utf8))
+                    case .rtf:
+                        if let rtf = latest.rtfData { return ContentHash.sha256Hex(rtf) }
+                        let text = latest.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        return ContentHash.sha256Hex(Data(text.utf8))
+                    case .image:
+                        return latest.imagePath
+                    }
+                }()
+
+                if latestKind == .rtf, latestHash == contentHash {
+                    return false
+                }
+            }
+        }
+
+        let entry = ClipboardEntry(text: trimmed, createdAt: now)
+        entry.kindRaw = "rtf"
+        entry.rtfData = rtfData
+        entry.contentHash = contentHash
+        context.insert(entry)
+        try context.save()
+
+        try trimToMaxCount()
+        return true
+    }
+
+    @discardableResult
+    func insertImage(pngData: Data, contentHash: String, now: Date = .now) throws -> Bool {
+        if preferences.dedupeAdjacentEnabled {
+            if let latest = try fetchLatest(limit: 1).first {
+                let latestKind = ClipboardEntryKind(raw: latest.kindRaw)
+                let latestHash: String? = latest.contentHash ?? {
+                    switch latestKind {
+                    case .text:
+                        let text = latest.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        return ContentHash.sha256Hex(Data(text.utf8))
+                    case .rtf:
+                        if let rtf = latest.rtfData { return ContentHash.sha256Hex(rtf) }
+                        let text = latest.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        return ContentHash.sha256Hex(Data(text.utf8))
+                    case .image:
+                        return latest.imagePath
+                    }
+                }()
+
+                if latestKind == .image, latestHash == contentHash {
+                    return false
+                }
+            }
+        }
+
+        let relPath = try assetStore.saveImage(pngData: pngData, contentHash: contentHash)
+
+        let entry = ClipboardEntry(text: "图片", createdAt: now)
+        entry.kindRaw = "image"
+        entry.imagePath = relPath
+        entry.contentHash = contentHash
+        context.insert(entry)
+        try context.save()
+
+        try trimToMaxCount()
+        return true
+    }
+
     func clear() throws {
         let all = try context.fetch(FetchDescriptor<ClipboardEntry>())
         let imagePaths: Set<String> = Set(
@@ -123,12 +199,10 @@ extension ClipboardStore: ClipboardStoreInserting {
     }
 
     func insertRTF(rtfData: Data, plainText: String, contentHash: String) {
-        // 占位实现：完整逻辑在后续 spawn_agent 补齐
-        try? insert(text: plainText, now: .now)
+        _ = try? insertRTF(rtfData: rtfData, plainText: plainText, contentHash: contentHash, now: .now)
     }
 
     func insertImage(pngData: Data, contentHash: String) {
-        // 占位实现：完整逻辑在后续 spawn_agent 补齐
-        try? insert(text: "图片", now: .now)
+        _ = try? insertImage(pngData: pngData, contentHash: contentHash, now: .now)
     }
 }

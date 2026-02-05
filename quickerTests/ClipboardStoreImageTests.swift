@@ -5,6 +5,29 @@ import XCTest
 
 @MainActor
 final class ClipboardStoreImageTests: XCTestCase {
+    func testInsertImagePersistsPath() throws {
+        let schema = Schema([ClipboardEntry.self])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [config])
+
+        let baseURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let assets = ClipboardAssetStore(baseURL: baseURL)
+
+        let prefs = PreferencesStore(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let store = ClipboardStore(modelContainer: container, preferences: prefs, assetStore: assets)
+
+        let png = Data([0x01, 0x02])
+        let hash = ContentHash.sha256Hex(png)
+
+        _ = try store.insertImage(pngData: png, contentHash: hash)
+
+        let entry = try XCTUnwrap(store.fetchLatest(limit: 1).first)
+        XCTAssertEqual(entry.kindRaw, "image")
+        let rel = try XCTUnwrap(entry.imagePath)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: assets.fileURL(relativePath: rel).path))
+    }
+
     func testClearDeletesUnreferencedImageFiles() throws {
         let schema = Schema([ClipboardEntry.self])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
@@ -32,4 +55,3 @@ final class ClipboardStoreImageTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: assets.fileURL(relativePath: rel).path))
     }
 }
-
