@@ -44,8 +44,10 @@ final class PasteService {
             }
             return paste(text: entry.text)
         case .image:
-            guard let path = entry.imagePath else { return .copiedOnly }
-            guard let png = try? assetStore.loadImageData(relativePath: path) else { return .copiedOnly }
+            guard let path = entry.imagePath, let png = try? assetStore.loadImageData(relativePath: path) else {
+                writer.writeString(entry.text)
+                return .copiedOnly
+            }
             writer.writePNG(png)
             return maybeSendCmdV()
         }

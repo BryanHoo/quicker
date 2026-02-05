@@ -42,6 +42,22 @@ final class PasteServiceLogicTests: XCTestCase {
         XCTAssertEqual(writer.writtenKinds, ["rtf"])
         XCTAssertEqual(events.sentCount, 1)
     }
+
+    func testFallsBackToStringWhenPastingImageButMissingFile() {
+        let writer = SpyPasteboardWriter()
+        let events = SpyPasteEventSender()
+        let permission = FakeAccessibilityPermission(isTrusted: true)
+        let service = PasteService(writer: writer, eventSender: events, permission: permission, assetStore: FakeAssetStore())
+
+        let entry = ClipboardEntry(text: "图片")
+        entry.kindRaw = "image"
+        entry.imagePath = nil
+
+        let result = service.paste(entry: entry)
+        XCTAssertEqual(writer.writtenKinds, ["text"])
+        XCTAssertEqual(events.sentCount, 0)
+        XCTAssertEqual(result, .copiedOnly)
+    }
 }
 
 private final class SpyPasteboardWriter: PasteboardWriting {

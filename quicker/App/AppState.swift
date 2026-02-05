@@ -34,8 +34,11 @@ final class AppState: ObservableObject {
         let panelController = PanelController(viewModel: panelViewModel) { entry, previousApp in
             if SystemAccessibilityPermission().isProcessTrusted(promptIfNeeded: false) {
                 previousApp?.activate(options: [])
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [pasteService] in
-                    _ = pasteService.paste(entry: Self.makePasteEntry(from: entry))
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [pasteService, toast] in
+                    let result = pasteService.paste(entry: Self.makePasteEntry(from: entry))
+                    if result == .copiedOnly {
+                        toast.show(message: "已复制到剪贴板（可手动 ⌘V）")
+                    }
                 }
             } else {
                 _ = pasteService.paste(entry: Self.makePasteEntry(from: entry))
@@ -90,8 +93,11 @@ final class AppState: ObservableObject {
     func pasteFromPanel(entry: ClipboardPanelEntry, previousApp: NSRunningApplication?) {
         if SystemAccessibilityPermission().isProcessTrusted(promptIfNeeded: false) {
             previousApp?.activate(options: [])
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [pasteService] in
-                _ = pasteService.paste(entry: Self.makePasteEntry(from: entry))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [pasteService, toast] in
+                let result = pasteService.paste(entry: Self.makePasteEntry(from: entry))
+                if result == .copiedOnly {
+                    toast.show(message: "已复制到剪贴板（可手动 ⌘V）")
+                }
             }
         } else {
             _ = pasteService.paste(entry: Self.makePasteEntry(from: entry))
