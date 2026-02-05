@@ -12,9 +12,15 @@ struct ClipboardSettingsView: View {
         Form {
             Section("历史") {
                 LabeledContent("最大条数") {
-                    Stepper(value: $maxHistoryCount, in: 0...5000, step: 10) {
+                    HStack(spacing: 8) {
                         Text("\(maxHistoryCount)")
                             .monospacedDigit()
+                            .frame(minWidth: 44, alignment: .trailing)
+
+                        Stepper("", value: $maxHistoryCount, in: 0...5000, step: 10)
+                            .labelsHidden()
+                            .accessibilityLabel("最大条数")
+                            .accessibilityValue("\(maxHistoryCount)")
                     }
                     .frame(maxWidth: 180, alignment: .trailing)
                 }
@@ -25,6 +31,17 @@ struct ClipboardSettingsView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
+            
+            Section("隐私与权限") {
+                Text("应用会读取剪贴板用于历史功能；可通过忽略应用/限量/清空降低暴露面。")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Button("打开“辅助功能”系统设置") {
+                    SystemSettingsDeepLink.openAccessibilityPrivacy()
+                }
+            }
+
 
             Section("忽略应用") {
                 HStack {
@@ -43,16 +60,6 @@ struct ClipboardSettingsView: View {
                 }
                 .listStyle(.inset)
                 .frame(height: 160)
-            }
-
-            Section("隐私与权限") {
-                Text("应用会读取剪贴板用于历史功能；可通过忽略应用/限量/清空降低暴露面。")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                Button("打开“辅助功能”系统设置") {
-                    SystemSettingsDeepLink.openAccessibilityPrivacy()
-                }
             }
 
             Section("危险操作") {
