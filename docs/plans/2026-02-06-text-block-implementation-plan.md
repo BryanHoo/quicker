@@ -30,7 +30,7 @@
 1) 在独立 worktree 执行，避免污染当前分支。  
 2) 严格 TDD：先写失败测试，再最小实现，再跑通过。  
 3) 小步提交：每个 `spawn_agent` 一次 commit。  
-4) 任何 Xcode 相关操作必须用 **xc-all MCP**（`xcode_list` / `xcode_test` / `xcode_build`），不要直接调用 `xcodebuild`。  
+4) 任何 Xcode 相关操作必须按用途使用 **xc-build / xc-testing / xc-meta MCP**（`xcode_list` / `xcode_test` / `xcode_build` / `xcode_clean`），不要直接调用 `xcodebuild`。  
 5) 执行阶段建议显式使用以下技能：`@superpowers-executing-plans`、`@superpowers-test-driven-development`、`@superpowers-systematic-debugging`、`@superpowers-verification-before-completion`。
 
 ---
@@ -105,7 +105,7 @@ final class TextBlockStoreTests: XCTestCase {
 
 **Step 2: Run test to verify it fails**
 
-Invoke（xc-all MCP / `xcode_test`）:
+Invoke（xc-testing MCP / `xcode_test`）:
 ```json
 {
   "project_path": "quicker.xcodeproj",
@@ -331,7 +331,7 @@ private func make(_ title: String) -> TextBlockPanelEntry {
 
 **Step 2: Run test to verify it fails**
 
-Invoke（xc-all MCP / `xcode_test`）:
+Invoke（xc-testing MCP / `xcode_test`）:
 ```json
 {
   "project_path": "quicker.xcodeproj",
@@ -519,7 +519,7 @@ func testPersistAndReadBack() throws {
 
 **Step 2: Run test to verify it fails**
 
-Invoke（xc-all MCP / `xcode_test`）:
+Invoke（xc-testing MCP / `xcode_test`）:
 ```json
 {
   "project_path": "quicker.xcodeproj",
@@ -657,7 +657,7 @@ final class HotkeyRouteCodecTests: XCTestCase {
 
 **Step 2: Run test to verify it fails**
 
-Invoke（xc-all MCP / `xcode_test`）:
+Invoke（xc-testing MCP / `xcode_test`）:
 ```json
 {
   "project_path": "quicker.xcodeproj",
@@ -855,7 +855,7 @@ final class TextBlockPanelMapperTests: XCTestCase {
 
 **Step 2: Run test to verify it fails**
 
-Invoke（xc-all MCP / `xcode_test`）:
+Invoke（xc-testing MCP / `xcode_test`）:
 ```json
 {
   "project_path": "quicker.xcodeproj",
@@ -1169,7 +1169,7 @@ final class AppHotkeyRouteTests: XCTestCase {
 
 **Step 2: Run test to verify it fails**
 
-Invoke（xc-all MCP / `xcode_test`）:
+Invoke（xc-testing MCP / `xcode_test`）:
 ```json
 {
   "project_path": "quicker.xcodeproj",
@@ -1443,7 +1443,7 @@ final class HotkeyValidationTests: XCTestCase {
 
 **Step 2: Run test to verify it fails**
 
-Invoke（xc-all MCP / `xcode_test`）:
+Invoke（xc-testing MCP / `xcode_test`）:
 ```json
 {
   "project_path": "quicker.xcodeproj",
