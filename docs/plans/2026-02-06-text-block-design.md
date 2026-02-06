@@ -52,7 +52,7 @@
 
 新增 `TextBlockEntry`（SwiftData `@Model`）：
 
-- `id`（SwiftData 隐式标识或显式 UUID）
+- `uuid: UUID`（建议 `@Attribute(.unique)`，便于去重/导入时 upsert）
 - `title: String`
 - `content: String`
 - `sortOrder: Int`
@@ -71,6 +71,11 @@
 
 - 与现有 `ClipboardEntry` 共用同一个 `ModelContainer`（在 `AppState` 扩展 schema）。
 - `title/content` 在写入前做 `trim` 校验，拒绝空内容。
+
+SwiftData 演进策略（新增）：
+
+- 这次引入新模型时，同步规划 `VersionedSchema + SchemaMigrationPlan`，避免后续字段演进时出现不可控迁移风险。
+- 若后续需要重命名字段，使用 `@Attribute(originalName:)` 保留历史数据映射，避免“重命名被识别为新增字段”导致的数据丢失。
 
 ### 4.2 面板与视图模型
 
@@ -105,6 +110,12 @@
 
 默认值建议：`⌘⇧B`（保留与 `⌘⇧V` 的语义区分，冲突概率较低）。
 
+快捷键约束（新增）：
+
+- 录制与保存阶段增加“保留组合”校验，拒绝系统/辅助功能保留快捷键，并给出明确错误提示。
+- 避免覆盖常见应用级惯例快捷键；若用户强制选择高冲突组合，给出风险警告但允许其自行确认。
+- 保持“至少包含 `⌘`”规则，降低与输入类按键冲突概率。
+
 ### 4.4 应用编排（AppState）
 
 在 `AppState` 中新增：
@@ -133,20 +144,26 @@
 - 区域 A：文本块面板快捷键
 - 区域 B：文本块列表（支持选择与拖拽排序）
 - 区域 C：编辑区（标题 + 内容）
-- 区域 D：操作区（新增、删除）
+- 区域 D：操作区（新增、删除、上移/下移）
 
 ### 5.2 增删改流程（统一在该 Tab）
 
 - 新增：点击“新建文本块”，创建默认项并进入编辑态。
-- 编辑：修改标题/内容后自动保存（或 `⌘S` 保存），内容为空时禁用保存并提示。
+- 编辑：修改标题/内容后自动保存（失焦、切换选中项、关闭设置页时都触发保存），内容为空时禁用保存并提示。
 - 删除：二次确认后删除，自动选中相邻项。
-- 排序：拖拽后立即持久化 `sortOrder`。
+- 排序：拖拽后立即持久化 `sortOrder`；同时提供“上移/下移”按钮作为非拖拽替代路径。
 
 ### 5.3 快捷键配置
 
 - 复用 `HotkeyRecorderView` 录制。
 - 注册失败时提示“快捷键可能冲突，请更换组合”。
 - 仅在注册成功后覆盖旧配置，避免把可用热键写坏。
+
+### 5.4 可访问性与键盘优先补充
+
+- TextBlock Tab 内所有核心操作（新增、编辑、删除、重排、保存）都必须可通过键盘完成，不依赖鼠标拖拽。
+- 面板与设置页中新增的交互控件必须补齐可访问名称与一致的焦点顺序，确保 VoiceOver 与 Full Keyboard Access 下可用。
+- 面板弹出时焦点进入面板；面板关闭后焦点回到合理位置，避免焦点落在不可见背景元素。
 
 ## 6. 面板交互规范
 
@@ -188,6 +205,7 @@
   - `entryForCmdNumber(1...5)` 映射
 - `HotkeyManager` 相关测试（可用逻辑层抽象）
   - 双 action 注册与路由分发
+  - 保留快捷键校验与冲突分级提示
 
 ### 8.2 手测清单
 
@@ -195,6 +213,7 @@
 - 设置页新增/编辑/删除/排序后，面板立即反映最新内容与顺序。
 - `Enter` 与 `⌘1..5` 均能“插入并关闭”。
 - 重启应用后文本块内容、顺序、热键配置保持。
+- 在 Full Keyboard Access 开启时，Tab 内所有操作可只用键盘完成（含重排替代路径）。
 
 ## 9. 实施顺序（建议）
 
@@ -203,3 +222,16 @@
 3) 热键层：`HotkeyManager` 多路由重构 + `textBlockHotkey` 偏好。  
 4) 面板层：`TextBlockPanelViewModel` + `TextBlockPanelView` + `AppState` 编排。  
 5) 回归与验收：覆盖双热键与粘贴降级场景。
+
+## 10. 外部最佳实践依据（2026-02-06 检索）
+
+- SwiftData schema 演进建议（`@Attribute(.unique)`、`@Attribute(originalName:)`、`VersionedSchema`、`SchemaMigrationPlan`）：  
+  `https://developer.apple.com/videos/play/wwdc2023/10195/`
+- 可访问性与键盘导航（支持 Full Keyboard Access、避免覆盖系统快捷键）：  
+  `https://developer.apple.com/design/human-interface-guidelines/accessibility`
+- 文件/编辑类交互中的保存策略（避免要求用户频繁显式保存，推荐自动保存）：  
+  `https://developer.apple.com/design/human-interface-guidelines/file-management`
+- 保留/常用快捷键不要重载（系统保留组合与应用惯例组合）：  
+  `https://developer.apple.com/library/archive/documentation/UserExperience/Conceptual/AppleHIGuidelines/XHIGKeyboardShortcuts/XHIGKeyboardShortcuts.html`
+- VoiceOver 可用性验收口径（常见任务应可仅通过辅助技术完成）：  
+  `https://developer.apple.com/help/app-store-connect/manage-app-accessibility/voiceover-evaluation-criteria/`
