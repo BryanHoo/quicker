@@ -15,6 +15,9 @@ struct QuickerApp: App {
             Button("Open Clipboard Panel") {
                 appState.togglePanel()
             }
+            Button("Open Text Block Panel") {
+                appState.toggleTextBlockPanel()
+            }
             SettingsLink {
                 Text("Settings…")
             }
