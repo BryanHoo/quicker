@@ -4,6 +4,7 @@ struct SettingsView: View {
     private enum Tab: String, Hashable {
         case general
         case clipboard
+        case textBlock
         case about
     }
 
@@ -24,12 +25,18 @@ struct SettingsView: View {
             .tag(Tab.clipboard)
 
             SettingsPage {
+                TextBlockSettingsView()
+            }
+            .tabItem { Label("文本块", systemImage: "text.bubble") }
+            .tag(Tab.textBlock)
+
+            SettingsPage {
                 AboutView()
             }
             .tabItem { Label("关于", systemImage: "info.circle") }
             .tag(Tab.about)
         }
-        .frame(width: 620, height: 460)
+        .frame(width: 720, height: 520)
     }
 }
 
