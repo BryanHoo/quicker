@@ -15,5 +15,9 @@ enum PreferencesKeys {
         static let key = "hotkey"
         static let defaultValue = Hotkey.default
     }
-}
 
+    enum textBlockHotkey {
+        static let key = "textBlockHotkey"
+        static let defaultValue = Hotkey.textBlockDefault
+    }
+}

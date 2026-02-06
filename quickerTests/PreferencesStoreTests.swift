@@ -1,3 +1,4 @@
+import Carbon
 import XCTest
 @testable import quicker
 
@@ -10,6 +11,7 @@ final class PreferencesStoreTests: XCTestCase {
         XCTAssertEqual(store.maxHistoryCount, PreferencesKeys.maxHistoryCount.defaultValue)
         XCTAssertEqual(store.dedupeAdjacentEnabled, PreferencesKeys.dedupeAdjacentEnabled.defaultValue)
         XCTAssertEqual(store.hotkey, PreferencesKeys.hotkey.defaultValue)
+        XCTAssertEqual(store.textBlockHotkey, PreferencesKeys.textBlockHotkey.defaultValue)
     }
 
     func testPersistAndReadBack() throws {
@@ -19,9 +21,11 @@ final class PreferencesStoreTests: XCTestCase {
         store.maxHistoryCount = 10
         store.dedupeAdjacentEnabled = false
         store.hotkey = Hotkey(keyCode: 1, modifiers: 0)
+        store.textBlockHotkey = Hotkey(keyCode: 11, modifiers: UInt32(cmdKey | shiftKey))
 
         XCTAssertEqual(store.maxHistoryCount, 10)
         XCTAssertEqual(store.dedupeAdjacentEnabled, false)
         XCTAssertEqual(store.hotkey, Hotkey(keyCode: 1, modifiers: 0))
+        XCTAssertEqual(store.textBlockHotkey, Hotkey(keyCode: 11, modifiers: UInt32(cmdKey | shiftKey)))
     }
 }

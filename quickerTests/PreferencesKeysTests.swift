@@ -6,6 +6,6 @@ final class PreferencesKeysTests: XCTestCase {
         XCTAssertEqual(PreferencesKeys.maxHistoryCount.defaultValue, 200)
         XCTAssertEqual(PreferencesKeys.dedupeAdjacentEnabled.defaultValue, true)
         XCTAssertEqual(PreferencesKeys.hotkey.defaultValue, .default)
+        XCTAssertEqual(PreferencesKeys.textBlockHotkey.defaultValue, .textBlockDefault)
     }
 }
-

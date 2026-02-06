@@ -9,6 +9,11 @@ struct Hotkey: Equatable, Codable {
         keyCode: 9, // v
         modifiers: UInt32(cmdKey | shiftKey)
     )
+
+    static let textBlockDefault = Hotkey(
+        keyCode: 11, // b
+        modifiers: UInt32(cmdKey | shiftKey)
+    )
 }
 
 extension Hotkey {

@@ -42,4 +42,20 @@ final class PreferencesStore {
             userDefaults.set(data, forKey: PreferencesKeys.hotkey.key)
         }
     }
+
+    var textBlockHotkey: Hotkey {
+        get {
+            guard
+                let data = userDefaults.data(forKey: PreferencesKeys.textBlockHotkey.key),
+                let value = try? JSONDecoder().decode(Hotkey.self, from: data)
+            else {
+                return PreferencesKeys.textBlockHotkey.defaultValue
+            }
+            return value
+        }
+        set {
+            let data = try? JSONEncoder().encode(newValue)
+            userDefaults.set(data, forKey: PreferencesKeys.textBlockHotkey.key)
+        }
+    }
 }
