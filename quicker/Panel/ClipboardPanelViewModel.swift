@@ -37,12 +37,31 @@ final class ClipboardPanelViewModel: ObservableObject {
     }
 
     func moveSelectionUp() {
-        selectedIndexInPage = max(0, selectedIndexInPage - 1)
+        guard !entries.isEmpty else { return }
+
+        if selectedIndexInPage > 0 {
+            selectedIndexInPage -= 1
+            return
+        }
+
+        guard pageIndex > 0 else { return }
+        pageIndex -= 1
+        selectedIndexInPage = max(0, visibleEntries.count - 1)
     }
 
     func moveSelectionDown() {
+        guard !entries.isEmpty else { return }
+
         let maxIndex = max(0, visibleEntries.count - 1)
-        selectedIndexInPage = min(maxIndex, selectedIndexInPage + 1)
+        if selectedIndexInPage < maxIndex {
+            selectedIndexInPage += 1
+            return
+        }
+
+        let lastPageIndex = max(0, pageCount - 1)
+        guard pageIndex < lastPageIndex else { return }
+        pageIndex += 1
+        selectedIndexInPage = 0
     }
 
     func selectIndexInPage(_ index: Int) {
