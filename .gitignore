@@ -7,5 +7,16 @@ worktrees/
 **/xcuserdata/
 *.xcuserstate
 
+# Xcode SCM / workspace
+*.xccheckout
+*.xcscmblueprint
+*.xcbkptlist
+**/IDEWorkspaceChecks.plist
+
 # Build artifacts
 DerivedData/
+build/
+*.xcresult
+*.ipa
+*.dSYM.zip
+*.dSYM
