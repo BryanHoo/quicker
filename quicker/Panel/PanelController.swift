@@ -22,14 +22,36 @@ final class PanelController: NSObject, NSWindowDelegate {
     }
 
     func show() {
+        let isFirstPresentation = (panel == nil)
         if panel == nil { panel = makePanel() }
         guard let panel else { return }
 
         previousFrontmostApp = NSWorkspace.shared.frontmostApplication
 
-        center(panel)
-        panel.makeKeyAndOrderFront(nil)
+        // Activate first so the panel shows on the active space without a post-show jump.
         NSApp.activate(ignoringOtherApps: true)
+
+        let screen = preferredScreen()
+        center(panel, on: screen)
+
+        // On the first presentation, the final window frame can settle only after AppKit lays out the
+        // hosting view. Hide the panel until we can re-center using the final frame.
+        if isFirstPresentation {
+            panel.alphaValue = 0
+        } else {
+            panel.alphaValue = 1
+        }
+
+        panel.makeKeyAndOrderFront(nil)
+
+        if isFirstPresentation {
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let panel = self.panel, panel.isVisible else { return }
+                panel.contentView?.layoutSubtreeIfNeeded()
+                self.center(panel, on: screen)
+                panel.alphaValue = 1
+            }
+        }
     }
 
     func close() {
@@ -75,11 +97,15 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     private func preferredScreen() -> NSScreen? {
         let point = NSEvent.mouseLocation
-        return NSScreen.screens.first { $0.frame.contains(point) } ?? NSScreen.main
+        return NSScreen.screens.first { $0.frame.contains(point) } ?? NSScreen.main ?? NSScreen.screens.first
     }
 
     private func center(_ panel: NSWindow) {
-        guard let screen = preferredScreen() else { return }
+        center(panel, on: preferredScreen())
+    }
+
+    private func center(_ panel: NSWindow, on screen: NSScreen?) {
+        guard let screen else { return }
         let frame = screen.visibleFrame
         let size = panel.frame.size
         let origin = CGPoint(
