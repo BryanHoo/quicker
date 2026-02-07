@@ -1,0 +1,18 @@
+schema: codespec-workflow
+
+context: |
+  Language: 简体中文（代码、命令、日志、错误信息、路径、配置 key、标识符保持原样，不翻译）
+  Workflow: 需求确认 → 规格（Requirements/Scenarios）→ 设计 → 详细实施计划（tasks.md）→ TDD 实施 → 验证收束 → archive
+
+rules:
+  proposal:
+    - Use the template sections exactly (## Why / ## What Changes / ## Capabilities / ## Impact)
+    - Capabilities 列表必须是 kebab-case，并用反引号包裹（例如 `user-auth`）
+  specs:
+    - Scenarios 必须使用 `#### Scenario:`（四个 #），否则可能无法被解析
+    - Requirement/Scenario 描述必须可测试、可验证（避免“优化一下”这类不可验证表述）
+  design:
+    - Decisions 必须包含替代方案与取舍理由（why X over Y）
+  tasks:
+    - tasks.md 是“详细实施计划”，粒度到 2-5 分钟一步，必须包含 TDD 的 RED/VERIFY_RED/GREEN/VERIFY_GREEN/REFACTOR
+    - 每个可验证步骤都要写清 Run/Expected（要跑的命令与预期结果）
