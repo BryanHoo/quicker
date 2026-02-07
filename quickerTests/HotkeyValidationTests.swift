@@ -3,6 +3,20 @@ import XCTest
 @testable import quicker
 
 final class HotkeyValidationTests: XCTestCase {
+    func testClipboardRejectsWhenSameAsTextBlockHotkey() {
+        XCTAssertEqual(
+            HotkeyValidation.validateClipboard(.textBlockDefault, textBlockHotkey: .textBlockDefault),
+            .conflictsWithTextBlock
+        )
+    }
+
+    func testClipboardAcceptsDifferentHotkey() {
+        XCTAssertEqual(
+            HotkeyValidation.validateClipboard(.default, textBlockHotkey: .textBlockDefault),
+            nil
+        )
+    }
+
     func testRejectsWhenMissingCommand() {
         let candidate = Hotkey(keyCode: 11, modifiers: UInt32(shiftKey))
         XCTAssertEqual(

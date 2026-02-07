@@ -1,4 +1,4 @@
-import Carbon
+import AppKit
 import SwiftUI
 
 struct TextBlockSettingsView: View {
@@ -6,125 +6,298 @@ struct TextBlockSettingsView: View {
 
     @State private var entries: [TextBlockEntry] = []
     @State private var selectedID: UUID?
-    @State private var editTitle: String = ""
-    @State private var editContent: String = ""
+    @State private var panelError: String?
 
-    @State private var isRecordingHotkey = false
-    @State private var textBlockHotkey: Hotkey = .textBlockDefault
-    @State private var hotkeyError: String?
+    @State private var pendingDeleteID: UUID?
+    @State private var isConfirmingDelete = false
+
+    @State private var isEditorPresented = false
+    @State private var editingID: UUID?
+    @State private var draftTitle = ""
+    @State private var draftContent = ""
+    @State private var draftError: String?
 
     var body: some View {
-        Form {
-            Section("文本块面板快捷键") {
-                LabeledContent("快捷键") {
-                    HStack(spacing: 10) {
-                        Text(textBlockHotkey.displayString).monospacedDigit()
-                        Button("修改…") { isRecordingHotkey = true }
-                    }
-                }
-
-                if let hotkeyError {
-                    Text(hotkeyError)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                } else if appState.textBlockHotkeyRegisterStatus != noErr {
-                    Text("快捷键可能冲突，请更换组合。")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+        SettingsStack {
+            listPanel
+        }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .onAppear(perform: load)
+            .sheet(isPresented: $isEditorPresented, content: editorSheet)
+            .confirmationDialog("删除这个文本块？", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
+                Button("删除", role: .destructive, action: confirmDelete)
+                Button("取消", role: .cancel) {}
+            } message: {
+                if let pendingDeleteEntry {
+                    Text("“\(pendingDeleteEntry.title)” 删除后无法恢复。")
                 } else {
-                    Text("建议包含 ⌘，避免与应用常用快捷键冲突。")
-                        .font(.subheadline)
+                    Text("删除后无法恢复。")
+                }
+            }
+    }
+
+    private var listPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Label("文本块列表", systemImage: "list.bullet.rectangle")
+                        .font(.headline)
+                    Text("常用模板可快速插入到当前应用。")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+
+                Spacer()
+
+                Button(action: beginCreate) {
+                    Label("新增", systemImage: "plus")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.regular)
+                .keyboardShortcut("n", modifiers: [.command])
             }
 
-            Section("文本块") {
-                HStack(alignment: .top, spacing: 12) {
-                    List(selection: $selectedID) {
+            if entries.isEmpty {
+                emptyListState
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 8) {
                         ForEach(entries, id: \.uuid) { entry in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(entry.title).lineLimit(1)
-                                Text(entry.content).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                            }
-                            .tag(entry.uuid)
+                            TextBlockListCard(
+                                entry: entry,
+                                isSelected: selectedID == entry.uuid,
+                                onSelect: { selectedID = entry.uuid },
+                                onEdit: { beginEdit(id: entry.uuid) },
+                                onDelete: { requestDelete(id: entry.uuid) }
+                            )
                         }
-                        .onMove(perform: moveRows)
                     }
-                    .frame(minWidth: 240, minHeight: 260)
+                    .padding(.vertical, 1)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        TextField("标题", text: $editTitle)
-                            .onSubmit(saveSelection)
-                        TextEditor(text: $editContent)
-                            .frame(minHeight: 180)
-                            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary, lineWidth: 1))
-                        HStack {
-                            Button("新建", action: createEntry)
-                            Button("删除", role: .destructive, action: deleteSelection).disabled(selectedID == nil)
-                            Button("上移", action: moveUp).disabled(selectedID == nil)
-                            Button("下移", action: moveDown).disabled(selectedID == nil)
-                            Spacer()
-                            Button("保存", action: saveSelection).disabled(selectedID == nil)
-                        }
+            HStack(alignment: .center, spacing: 10) {
+                if let panelError {
+                    Label(panelError, systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                } else {
+                    Text("\(entries.count) 条文本块")
+                }
+
+                Spacer()
+
+                HStack(spacing: 8) {
+                    Button(action: moveUp) {
+                        Image(systemName: "arrow.up")
                     }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .buttonStyle(.bordered)
+                    .help("上移")
+                    .disabled(canMoveUp == false)
+
+                    Button(action: moveDown) {
+                        Image(systemName: "arrow.down")
+                    }
+                    .buttonStyle(.bordered)
+                    .help("下移")
+                    .disabled(canMoveDown == false)
                 }
             }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
-        .formStyle(.grouped)
-        .onAppear(perform: load)
-        .onDisappear(perform: saveSelection)
-        .onChange(of: selectedID) { _ in loadSelectionDraft() }
-        .sheet(isPresented: $isRecordingHotkey) {
-            TextBlockHotkeyRecorderSheet(
-                onCancel: { isRecordingHotkey = false },
-                onCapture: handleHotkeyCapture
+        .padding(14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .settingsModuleCard()
+    }
+
+    private var emptyListState: some View {
+        VStack(spacing: 9) {
+            Spacer(minLength: 16)
+            Image(systemName: "text.bubble")
+                .font(.system(size: 24, weight: .regular))
+                .foregroundStyle(.secondary)
+            Text("还没有文本块")
+                .font(.headline)
+            Text("点击“新增”创建文本块。")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 16)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.vertical, 16)
+    }
+
+    private var pendingDeleteEntry: TextBlockEntry? {
+        guard let pendingDeleteID else { return nil }
+        return entries.first(where: { $0.uuid == pendingDeleteID })
+    }
+
+    private var canMoveUp: Bool {
+        guard let selectedID, let index = entries.firstIndex(where: { $0.uuid == selectedID }) else { return false }
+        return index > 0
+    }
+
+    private var canMoveDown: Bool {
+        guard let selectedID, let index = entries.firstIndex(where: { $0.uuid == selectedID }) else { return false }
+        return index < entries.count - 1
+    }
+
+    private var canSubmitDraft: Bool {
+        draftContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    @ViewBuilder
+    private func editorSheet() -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(editingID == nil ? "新增文本块" : "编辑文本块")
+                        .font(.title3.weight(.semibold))
+                    Text("留空标题时会自动取正文首行。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("标题")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("留空会自动使用正文首行", text: $draftTitle)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("内容")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextEditor(text: $draftContent)
+                    .font(.body)
+                    .frame(minHeight: 200)
+                    .padding(8)
+                    .settingsCardContainer()
+            }
+
+            if let draftError {
+                Label(draftError, systemImage: "exclamationmark.triangle.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(.red)
+            }
+
+            HStack {
+                Button("取消", role: .cancel, action: dismissEditor)
+                    .keyboardShortcut(.cancelAction)
+                Spacer()
+                Button(action: saveDraft) {
+                    Label(editingID == nil ? "创建" : "保存", systemImage: "checkmark")
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(canSubmitDraft == false)
+            }
+        }
+        .padding(18)
+        .frame(width: 520, height: 410, alignment: .topLeading)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(nsColor: .windowBackgroundColor),
+                    Color.accentColor.opacity(0.06),
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
-        }
+        )
     }
 
     private func load() {
-        textBlockHotkey = appState.preferences.textBlockHotkey
         entries = (try? appState.textBlockStore.fetchAllBySortOrder()) ?? []
-        if selectedID == nil { selectedID = entries.first?.uuid }
-        loadSelectionDraft()
+        panelError = nil
+        if let selectedID, entries.contains(where: { $0.uuid == selectedID }) {
+            self.selectedID = selectedID
+        } else {
+            selectedID = entries.first?.uuid
+        }
     }
 
-    private func loadSelectionDraft() {
-        guard let selectedID, let selected = entries.first(where: { $0.uuid == selectedID }) else {
-            editTitle = ""
-            editContent = ""
+    private func beginCreate() {
+        editingID = nil
+        draftTitle = ""
+        draftContent = ""
+        draftError = nil
+        panelError = nil
+        isEditorPresented = true
+    }
+
+    private func beginEdit(id: UUID) {
+        guard let entry = entries.first(where: { $0.uuid == id }) else {
+            panelError = "当前文本块不存在，请刷新后重试。"
             return
         }
-        editTitle = selected.title
-        editContent = selected.content
+        panelError = nil
+        selectedID = id
+        editingID = id
+        draftTitle = entry.title
+        draftContent = entry.content
+        draftError = nil
+        isEditorPresented = true
     }
 
-    private func createEntry() {
-        if let created = try? appState.textBlockStore.create(title: "新文本块", content: "请编辑内容") {
-            reload(keep: created.uuid)
+    private func dismissEditor() {
+        draftError = nil
+        isEditorPresented = false
+    }
+
+    private func saveDraft() {
+        do {
+            if let editingID {
+                try appState.textBlockStore.update(id: editingID, title: draftTitle, content: draftContent)
+                reload(keep: editingID)
+            } else {
+                let created = try appState.textBlockStore.create(title: draftTitle, content: draftContent)
+                reload(keep: created.uuid)
+            }
+            panelError = nil
+            draftError = nil
+            isEditorPresented = false
             appState.refreshTextBlockPanelEntries()
+        } catch let error as TextBlockStoreError {
+            draftError = editorMessage(for: error)
+        } catch {
+            draftError = "保存失败，请稍后重试。"
         }
     }
 
-    private func saveSelection() {
-        guard let selectedID else { return }
-        guard let _ = try? appState.textBlockStore.update(id: selectedID, title: editTitle, content: editContent) else { return }
-        reload(keep: selectedID)
-        appState.refreshTextBlockPanelEntries()
+    private func requestDelete(id: UUID?) {
+        guard let id else { return }
+        pendingDeleteID = id
+        isConfirmingDelete = true
     }
 
-    private func deleteSelection() {
-        guard let selectedID else { return }
-        try? appState.textBlockStore.delete(id: selectedID)
-        reload(keep: entries.first(where: { $0.uuid != selectedID })?.uuid)
-        appState.refreshTextBlockPanelEntries()
+    private func confirmDelete() {
+        guard let pendingDeleteID else { return }
+        do {
+            try appState.textBlockStore.delete(id: pendingDeleteID)
+            reload(keep: entries.first(where: { $0.uuid != pendingDeleteID })?.uuid)
+            panelError = nil
+            appState.refreshTextBlockPanelEntries()
+        } catch {
+            panelError = "删除失败，请稍后重试。"
+        }
+        self.pendingDeleteID = nil
     }
 
     private func moveRows(from offsets: IndexSet, to destination: Int) {
-        try? appState.textBlockStore.move(fromOffsets: offsets, toOffset: destination)
-        reload(keep: selectedID)
-        appState.refreshTextBlockPanelEntries()
+        do {
+            try appState.textBlockStore.move(fromOffsets: offsets, toOffset: destination)
+            reload(keep: selectedID)
+            panelError = nil
+            appState.refreshTextBlockPanelEntries()
+        } catch {
+            panelError = "排序失败，请稍后重试。"
+        }
     }
 
     private func moveUp() {
@@ -137,92 +310,88 @@ struct TextBlockSettingsView: View {
         moveRows(from: IndexSet(integer: index), to: index + 2)
     }
 
+    private func editorMessage(for error: TextBlockStoreError) -> String {
+        switch error {
+        case .emptyContent:
+            return "内容不能为空。"
+        case .notFound:
+            return "当前文本块不存在，请重新选择。"
+        }
+    }
+
     private func reload(keep id: UUID?) {
         entries = (try? appState.textBlockStore.fetchAllBySortOrder()) ?? []
-        selectedID = id ?? entries.first?.uuid
-        loadSelectionDraft()
-    }
-
-    private func handleHotkeyCapture(_ event: NSEvent) {
-        if event.keyCode == 53 { // Esc
-            isRecordingHotkey = false
-            return
+        if let id, entries.contains(where: { $0.uuid == id }) {
+            selectedID = id
+        } else {
+            selectedID = entries.first?.uuid
         }
-
-        let modifiers = carbonModifiers(from: event.modifierFlags)
-        let candidate = Hotkey(keyCode: UInt32(event.keyCode), modifiers: modifiers)
-        if let error = HotkeyValidation.validateTextBlock(candidate, clipboardHotkey: appState.preferences.hotkey) {
-            switch error {
-            case .missingCommand:
-                hotkeyError = "文本块快捷键必须包含 ⌘。"
-            case .conflictsWithClipboard:
-                hotkeyError = "不能与剪切板面板快捷键相同。"
-            }
-            return
-        }
-
-        hotkeyError = nil
-        textBlockHotkey = candidate
-        appState.applyTextBlockHotkey(candidate)
-        isRecordingHotkey = false
     }
 
-    private func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
-        var result: UInt32 = 0
-        if flags.contains(.command) { result |= UInt32(cmdKey) }
-        if flags.contains(.shift) { result |= UInt32(shiftKey) }
-        if flags.contains(.option) { result |= UInt32(optionKey) }
-        if flags.contains(.control) { result |= UInt32(controlKey) }
-        return result
-    }
 }
 
-private struct TextBlockHotkeyRecorderSheet: View {
-    var onCancel: () -> Void
-    var onCapture: (NSEvent) -> Void
+private struct TextBlockListCard: View {
+    let entry: TextBlockEntry
+    let isSelected: Bool
+    let onSelect: () -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    private var previewText: String {
+        let flattened = entry.content.replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+        if flattened.isEmpty {
+            return "（空内容）"
+        }
+        return String(flattened.prefix(80))
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
-                Image(systemName: "keyboard")
-                    .font(.title2)
-                    .foregroundStyle(.secondary)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("按下新的文本块快捷键")
-                        .font(.headline)
-                    Text("按 Esc 取消；必须包含 ⌘")
-                        .font(.subheadline)
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(entry.title)
+                        .font(.headline.weight(.semibold))
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    Text(entry.updatedAt, format: .dateTime.hour().minute())
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
+
+                Text(previewText)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
+            VStack(spacing: 6) {
+                Button(action: onEdit) {
+                    Image(systemName: "square.and.pencil")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("编辑")
+
+                Button(role: .destructive, action: onDelete) {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("删除")
+            }
+            .foregroundStyle(.secondary)
+        }
+        .padding(11)
+        .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(.quaternary.opacity(0.35))
+                .fill(isSelected ? Color.accentColor.opacity(0.16) : Color.primary.opacity(0.05))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(.quaternary, lineWidth: 1)
+                        .stroke(isSelected ? Color.accentColor.opacity(0.30) : Color.white.opacity(0.22), lineWidth: 1)
                 )
-                .frame(height: 60)
-                .overlay(
-                    Text("正在监听键盘输入…")
-                        .foregroundStyle(.secondary)
-                )
-
-            HStack {
-                Spacer()
-                Button("取消") { onCancel() }
-                    .keyboardShortcut(.cancelAction)
-            }
-
-            HotkeyRecorderView { event in
-                onCapture(event)
-            }
-            .frame(width: 1, height: 1)
-            .opacity(0.01)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-        }
-        .padding(16)
-        .frame(width: 440, height: 210)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .onTapGesture(perform: onSelect)
     }
 }

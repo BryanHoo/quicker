@@ -9,13 +9,26 @@ struct ClipboardSettingsView: View {
     @State private var isConfirmingClearHistory = false
 
     var body: some View {
-        Form {
-            Section("历史") {
-                LabeledContent("最大条数") {
+        SettingsStack {
+            SettingsSection("历史") {
+                SettingsRow {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("最大条数")
+                        Text("超出后自动清理更旧的记录。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } trailing: {
                     HStack(spacing: 8) {
                         Text("\(maxHistoryCount)")
-                            .monospacedDigit()
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
                             .frame(minWidth: 44, alignment: .trailing)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(Color.accentColor.opacity(0.11))
+                            )
 
                         Stepper("", value: $maxHistoryCount, in: 0...5000, step: 10)
                             .labelsHidden()
@@ -25,39 +38,74 @@ struct ClipboardSettingsView: View {
                     .frame(maxWidth: 180, alignment: .trailing)
                 }
 
-                Toggle("相邻去重", isOn: $dedupeAdjacentEnabled)
+                Divider()
 
-                Text("修改会立即生效：会自动裁剪到最新 N 条。")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            
-            Section("隐私与权限") {
-                Text("应用会读取剪贴板用于历史功能；可通过忽略应用/限量/清空降低暴露面。")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                Button("打开“辅助功能”系统设置") {
-                    SystemSettingsDeepLink.openAccessibilityPrivacy()
+                SettingsRow {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("相邻去重")
+                        Text("连续复制相同内容时只保留一条。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } trailing: {
+                    Toggle("", isOn: $dedupeAdjacentEnabled)
+                        .labelsHidden()
                 }
             }
 
+            SettingsSection("隐私与权限") {
+                SettingsRow {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("辅助功能权限")
+                        Text("用于粘贴回原应用，首次使用可能需要授权。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } trailing: {
+                    Button("打开系统设置") {
+                        SystemSettingsDeepLink.openAccessibilityPrivacy()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
 
-            Section("忽略应用") {
-                HStack {
-                    Text("不记录这些应用产生的剪贴板内容。")
-                        .font(.subheadline)
+            SettingsSection("忽略应用") {
+                SettingsRow {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("已忽略应用")
+                        Text("来自这些应用的复制内容不会被记录。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } trailing: {
+                    HStack(spacing: 8) {
+                        Text(ignoredApps.isEmpty ? "未添加" : "\(ignoredApps.count) 个")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Color.secondary.opacity(0.88))
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(Color.secondary.opacity(0.12))
+                            )
+                        Button("选择应用…") { pickApp() }
+                            .buttonStyle(.bordered)
+                    }
+                }
+
+                if ignoredApps.isEmpty {
+                    Label("暂无忽略应用", systemImage: "tray")
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
-                    Spacer()
-                    Button("选择应用…") { pickApp() }
-                }
+                        .padding(.vertical, 4)
+                } else {
+                    Divider()
 
-                if ignoredApps.isEmpty == false {
                     VStack(spacing: 0) {
-                        ForEach(ignoredApps, id: \.bundleIdentifier) { app in
-                            HStack(spacing: 12) {
+                        ForEach(Array(ignoredApps.enumerated()), id: \.element.bundleIdentifier) { index, app in
+                            SettingsRow {
                                 IgnoredAppRow(app: app)
-                                Spacer(minLength: 0)
+                            } trailing: {
                                 Button {
                                     removeApp(bundleIdentifier: app.bundleIdentifier)
                                 } label: {
@@ -67,38 +115,37 @@ struct ClipboardSettingsView: View {
                                 .foregroundStyle(.secondary)
                                 .help("移除")
                             }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
 
-                            if app.bundleIdentifier != ignoredApps.last?.bundleIdentifier {
+                            if index < ignoredApps.count - 1 {
                                 Divider()
                             }
                         }
                     }
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color(nsColor: .controlBackgroundColor))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(.quaternary, lineWidth: 1)
-                    )
                 }
             }
 
-            Section("危险操作") {
-                Button("清空历史") { isConfirmingClearHistory = true }
-                    .foregroundStyle(.red)
-                    .confirmationDialog("确认清空所有历史？", isPresented: $isConfirmingClearHistory) {
-                        Button("清空", role: .destructive) {
-                            try? appState.clipboardStore.clear()
-                            appState.refreshPanelEntries()
-                        }
-                        Button("取消", role: .cancel) {}
+            SettingsSection("危险操作") {
+                SettingsRow {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("历史记录")
+                        Text("此操作不可撤销，请谨慎执行。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
+                } trailing: {
+                    Button("清空历史") { isConfirmingClearHistory = true }
+                        .buttonStyle(.bordered)
+                        .tint(.red)
+                        .confirmationDialog("确认清空所有历史？", isPresented: $isConfirmingClearHistory) {
+                            Button("清空", role: .destructive) {
+                                try? appState.clipboardStore.clear()
+                                appState.refreshPanelEntries()
+                            }
+                            Button("取消", role: .cancel) {}
+                        }
+                }
             }
         }
-        .formStyle(.grouped)
         .onAppear(perform: load)
         .onChange(of: maxHistoryCount) { _ in
             appState.preferences.maxHistoryCount = maxHistoryCount
@@ -127,13 +174,6 @@ struct ClipboardSettingsView: View {
             ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
 
         try? appState.ignoreAppStore.add(bundleIdentifier: bundleId, displayName: name, appPath: url.path)
-        ignoredApps = appState.ignoreAppStore.all()
-    }
-
-    private func deleteApps(at offsets: IndexSet) {
-        for i in offsets {
-            appState.ignoreAppStore.remove(bundleIdentifier: ignoredApps[i].bundleIdentifier)
-        }
         ignoredApps = appState.ignoreAppStore.all()
     }
 

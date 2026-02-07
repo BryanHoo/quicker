@@ -3,33 +3,61 @@ import SwiftUI
 
 struct AboutView: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .center, spacing: 14) {
+        SettingsStack {
+            HStack(spacing: 14) {
                 Image(nsImage: NSApp.applicationIconImage)
                     .resizable()
-                    .frame(width: 64, height: 64)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .frame(width: 48, height: 48)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(appName)
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                    Text(versionText)
+                        .font(.title3.weight(.semibold))
+                    Text("键盘优先的剪贴板历史工具")
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
+
                 Spacer()
-            }
 
-            Divider()
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Quicker 是一个键盘优先的剪贴板历史工具。")
+                Label("macOS", systemImage: "laptopcomputer")
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                Text("提示：在设置中可调整历史条数、相邻去重与忽略应用。")
-                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color.secondary.opacity(0.12))
+                    )
             }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .settingsModuleCard()
 
-            Spacer(minLength: 0)
+            SettingsSection("版本信息") {
+                SettingsRow {
+                    Text("版本")
+                } trailing: {
+                    Text(shortVersion)
+                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(Color.accentColor.opacity(0.12))
+                        )
+                }
+
+                Divider()
+
+                SettingsRow {
+                    Text("构建号")
+                } trailing: {
+                    Text(buildVersion)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -38,9 +66,11 @@ struct AboutView: View {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "Quicker"
     }
 
-    private var versionText: String {
-        let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
-        return "版本 \(short)（\(build)）"
+    private var shortVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+    }
+
+    private var buildVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
     }
 }
