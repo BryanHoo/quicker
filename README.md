@@ -101,8 +101,8 @@ shasum -a 256 -c quicker-<version>.dmg.sha256
 ## 卸载
 
 1. 退出 Quicker
-2. 删除 `Applications/quicker.app`
-3. 可选：删除本地数据（会清空历史与设置）
+2. 删除 `/Applications/quicker.app`
+3. 可选：删除本地数据（会清空历史与设置；目录存在时再删除）
    - `~/Library/Application Support/space.bryanhu.quicker`
    - `~/Library/Containers/space.bryanhu.quicker`
 
