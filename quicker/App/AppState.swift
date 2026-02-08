@@ -129,6 +129,50 @@ final class AppState: ObservableObject {
     }
 }
 
+extension AppState {
+    static func pasteClipboardEntry(
+        _ entry: ClipboardPanelEntry,
+        previousApp: RunningApplicationActivating?,
+        pasteService: PasteService,
+        toast: ToastPresenter,
+        permission: AccessibilityPermissionChecking = SystemAccessibilityPermission()
+    ) {
+        if permission.isProcessTrusted(promptIfNeeded: false) {
+            previousApp?.activate(options: [.activateIgnoringOtherApps])
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                let result = pasteService.paste(entry: makePasteEntry(from: entry))
+                if result == .copiedOnly {
+                    toast.show(message: "已复制到剪贴板（可手动 ⌘V）")
+                }
+            }
+        } else {
+            _ = pasteService.paste(entry: makePasteEntry(from: entry))
+            toast.show(message: "未开启辅助功能，已复制到剪贴板（可手动 ⌘V）")
+        }
+    }
+
+    static func pasteTextBlockEntry(
+        _ entry: TextBlockPanelEntry,
+        previousApp: RunningApplicationActivating?,
+        pasteService: PasteService,
+        toast: ToastPresenter,
+        permission: AccessibilityPermissionChecking = SystemAccessibilityPermission()
+    ) {
+        if permission.isProcessTrusted(promptIfNeeded: false) {
+            previousApp?.activate(options: [.activateIgnoringOtherApps])
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                let result = pasteService.paste(text: entry.content)
+                if result == .copiedOnly {
+                    toast.show(message: "已复制到剪贴板（可手动 ⌘V）")
+                }
+            }
+        } else {
+            _ = pasteService.paste(text: entry.content)
+            toast.show(message: "未开启辅助功能，已复制到剪贴板（可手动 ⌘V）")
+        }
+    }
+}
+
 private extension AppState {
     static func makePanelEntries(from items: [ClipboardEntry]) -> [ClipboardPanelEntry] {
         items.map { entry in
@@ -155,45 +199,5 @@ private extension AppState {
         pasteEntry.rtfData = entry.rtfData
         pasteEntry.imagePath = entry.imagePath
         return pasteEntry
-    }
-
-    static func pasteClipboardEntry(
-        _ entry: ClipboardPanelEntry,
-        previousApp: NSRunningApplication?,
-        pasteService: PasteService,
-        toast: ToastPresenter
-    ) {
-        if SystemAccessibilityPermission().isProcessTrusted(promptIfNeeded: false) {
-            previousApp?.activate(options: [])
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                let result = pasteService.paste(entry: makePasteEntry(from: entry))
-                if result == .copiedOnly {
-                    toast.show(message: "已复制到剪贴板（可手动 ⌘V）")
-                }
-            }
-        } else {
-            _ = pasteService.paste(entry: makePasteEntry(from: entry))
-            toast.show(message: "未开启辅助功能，已复制到剪贴板（可手动 ⌘V）")
-        }
-    }
-
-    static func pasteTextBlockEntry(
-        _ entry: TextBlockPanelEntry,
-        previousApp: NSRunningApplication?,
-        pasteService: PasteService,
-        toast: ToastPresenter
-    ) {
-        if SystemAccessibilityPermission().isProcessTrusted(promptIfNeeded: false) {
-            previousApp?.activate(options: [])
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                let result = pasteService.paste(text: entry.content)
-                if result == .copiedOnly {
-                    toast.show(message: "已复制到剪贴板（可手动 ⌘V）")
-                }
-            }
-        } else {
-            _ = pasteService.paste(text: entry.content)
-            toast.show(message: "未开启辅助功能，已复制到剪贴板（可手动 ⌘V）")
-        }
     }
 }

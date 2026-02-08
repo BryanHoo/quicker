@@ -5,12 +5,12 @@ import SwiftUI
 final class TextBlockPanelController: NSObject, NSWindowDelegate {
     private var panel: CenteredPanel?
     private let viewModel: TextBlockPanelViewModel
-    private let onInsert: (TextBlockPanelEntry, NSRunningApplication?) -> Void
-    private var previousFrontmostApp: NSRunningApplication?
+    private let onInsert: (TextBlockPanelEntry, RunningApplicationActivating?) -> Void
+    private var previousFrontmostApp: RunningApplicationActivating?
 
     init(
         viewModel: TextBlockPanelViewModel,
-        onInsert: @escaping (TextBlockPanelEntry, NSRunningApplication?) -> Void
+        onInsert: @escaping (TextBlockPanelEntry, RunningApplicationActivating?) -> Void
     ) {
         self.viewModel = viewModel
         self.onInsert = onInsert
