@@ -191,45 +191,48 @@ private struct ClipboardEntryRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 10) {
-            leading
+        Button(action: onSelect) {
+            HStack(spacing: 10) {
+                leading
 
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text(entry.previewText)
-                        .font(Theme.rowTextFont)
-                        .lineLimit(1)
-                        .truncationMode(entry.kind == .image ? .middle : .tail)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .help(entry.previewText)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 8) {
+                        Text(entry.previewText)
+                            .font(Theme.rowTextFont)
+                            .lineLimit(1)
+                            .truncationMode(entry.kind == .image ? .middle : .tail)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .help(entry.previewText)
 
-                    Text("⌘\(cmdNumber)")
-                        .font(Theme.rowCommandFont)
+                        Text("⌘\(cmdNumber)")
+                            .font(Theme.rowCommandFont)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Text(createdAtText)
+                        .font(Theme.rowMetaFont)
+                        .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }
-
-                Text(createdAtText)
-                    .font(Theme.rowMetaFont)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
             }
-        }
-        .padding(.vertical, Theme.rowVerticalPadding)
-        .padding(.horizontal, 10)
-        .background(
-            ZStack {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .fill(Color.accentColor.opacity(Theme.selectedFillOpacity))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                                .strokeBorder(Color.accentColor.opacity(Theme.selectedBorderOpacity), lineWidth: 1)
-                        )
+            .padding(.vertical, Theme.rowVerticalPadding)
+            .padding(.horizontal, 10)
+            .background(
+                ZStack {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .fill(Color.accentColor.opacity(Theme.selectedFillOpacity))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                    .strokeBorder(Color.accentColor.opacity(Theme.selectedBorderOpacity), lineWidth: 1)
+                            )
+                    }
                 }
-            }
-        )
-        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .onTapGesture { onSelect() }
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     @ViewBuilder

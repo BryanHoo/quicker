@@ -48,25 +48,27 @@ struct TextBlockPanelView: View {
                 ScrollView {
                     LazyVStack(spacing: 4) {
                         ForEach(Array(viewModel.visibleEntries.enumerated()), id: \.element.id) { idx, entry in
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack {
-                                    Text(entry.title).lineLimit(1)
-                                    Spacer()
-                                    Text("⌘\(idx + 1)")
-                                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            Button { viewModel.selectIndexInPage(idx) } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack {
+                                        Text(entry.title).lineLimit(1)
+                                        Spacer()
+                                        Text("⌘\(idx + 1)")
+                                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Text(entry.content)
+                                        .font(.system(size: 12))
+                                        .lineLimit(1)
                                         .foregroundStyle(.secondary)
                                 }
-                                Text(entry.content)
-                                    .font(.system(size: 12))
-                                    .lineLimit(1)
-                                    .foregroundStyle(.secondary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(idx == viewModel.selectedIndexInPage ? Color.accentColor.opacity(0.14) : .clear)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                             }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(idx == viewModel.selectedIndexInPage ? Color.accentColor.opacity(0.14) : .clear)
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            .onTapGesture { viewModel.selectIndexInPage(idx) }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
