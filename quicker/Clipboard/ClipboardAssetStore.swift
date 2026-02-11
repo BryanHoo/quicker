@@ -16,12 +16,18 @@ struct ClipboardAssetStore: ClipboardAssetStoring {
 
     static func defaultBaseURL() -> URL {
         let fm = FileManager.default
-        let appSupport = try! fm.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
+        let appSupport: URL
+        do {
+            appSupport = try fm.url(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            )
+        } catch {
+            NSLog("Failed to resolve applicationSupportDirectory, using temporary directory: \(error)")
+            appSupport = fm.temporaryDirectory
+        }
         let bundleId = Bundle.main.bundleIdentifier ?? "quicker"
         return appSupport
             .appendingPathComponent(bundleId, isDirectory: true)
@@ -57,4 +63,3 @@ struct ClipboardAssetStore: ClipboardAssetStoring {
         }
     }
 }
-

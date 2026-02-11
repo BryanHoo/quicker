@@ -47,7 +47,7 @@ struct TextBlockPanelView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 4) {
-                        ForEach(Array(viewModel.visibleEntries.enumerated()), id: \.offset) { idx, entry in
+                        ForEach(Array(viewModel.visibleEntries.enumerated()), id: \.element.id) { idx, entry in
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack {
                                     Text(entry.title).lineLimit(1)

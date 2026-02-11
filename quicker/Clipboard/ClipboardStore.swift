@@ -41,7 +41,10 @@ final class ClipboardStore {
                         let text = latest.text.trimmingCharacters(in: .whitespacesAndNewlines)
                         return ContentHash.sha256Hex(Data(text.utf8))
                     case .image:
-                        return latest.imagePath
+                        if let path = latest.imagePath, path.isEmpty == false {
+                            return URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
+                        }
+                        return nil
                     }
                 }()
 
@@ -78,7 +81,10 @@ final class ClipboardStore {
                         let text = latest.text.trimmingCharacters(in: .whitespacesAndNewlines)
                         return ContentHash.sha256Hex(Data(text.utf8))
                     case .image:
-                        return latest.imagePath
+                        if let path = latest.imagePath, path.isEmpty == false {
+                            return URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
+                        }
+                        return nil
                     }
                 }()
 
@@ -114,7 +120,10 @@ final class ClipboardStore {
                         let text = latest.text.trimmingCharacters(in: .whitespacesAndNewlines)
                         return ContentHash.sha256Hex(Data(text.utf8))
                     case .image:
-                        return latest.imagePath
+                        if let path = latest.imagePath, path.isEmpty == false {
+                            return URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
+                        }
+                        return nil
                     }
                 }()
 

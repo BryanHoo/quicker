@@ -82,7 +82,7 @@ struct ClipboardPanelView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 4) {
-                        ForEach(Array(viewModel.visibleEntries.enumerated()), id: \.offset) { idx, entry in
+                        ForEach(Array(viewModel.visibleEntries.enumerated()), id: \.element.id) { idx, entry in
                             ClipboardEntryRow(
                                 entry: entry,
                                 cmdNumber: idx + 1,

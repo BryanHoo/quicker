@@ -7,7 +7,7 @@ final class PastePreviousAppActivationTests: XCTestCase {
         let previousApp = SpyRunningApplication()
         let pasteService = makePasteService(isTrusted: true)
         let toast = ToastPresenter()
-        let entry = ClipboardPanelEntry(kind: .text, previewText: "A", createdAt: Date(), rtfData: nil, imagePath: nil)
+        let entry = ClipboardPanelEntry(kind: .text, previewText: "A", createdAt: Date(), rtfData: nil, imagePath: nil, contentHash: "A")
 
         AppState.pasteClipboardEntry(
             entry,
@@ -77,4 +77,3 @@ private struct FakeAssetStore: ClipboardAssetStoring {
     func deleteImage(relativePath: String) throws {}
     func fileURL(relativePath: String) -> URL { URL(fileURLWithPath: "/dev/null") }
 }
-

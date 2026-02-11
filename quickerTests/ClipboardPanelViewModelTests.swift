@@ -51,5 +51,12 @@ final class ClipboardPanelViewModelTests: XCTestCase {
 }
 
 private func makeEntry(_ previewText: String) -> ClipboardPanelEntry {
-    ClipboardPanelEntry(kind: .text, previewText: previewText, createdAt: Date(timeIntervalSince1970: 0), rtfData: nil, imagePath: nil)
+    ClipboardPanelEntry(
+        kind: .text,
+        previewText: previewText,
+        createdAt: Date(timeIntervalSince1970: 0),
+        rtfData: nil,
+        imagePath: nil,
+        contentHash: previewText
+    )
 }

@@ -19,14 +19,30 @@ final class AppState: ObservableObject {
     let clipboardMonitor: ClipboardMonitor
     let hotkeyManager: HotkeyManager
     let toast: ToastPresenter
+    private let isUsingInMemoryStore: Bool
 
     @Published private(set) var hotkeyRegisterStatus: OSStatus = noErr
     @Published private(set) var textBlockHotkeyRegisterStatus: OSStatus = noErr
 
     init() {
         let schema = Schema([ClipboardEntry.self, TextBlockEntry.self])
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        let modelContainer = try! ModelContainer(for: schema, configurations: [config])
+        let modelContainer: ModelContainer
+        let isUsingInMemoryStore: Bool
+        do {
+            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+            modelContainer = try ModelContainer(for: schema, configurations: [config])
+            isUsingInMemoryStore = false
+        } catch {
+            let persistentError = error
+            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            do {
+                modelContainer = try ModelContainer(for: schema, configurations: [config])
+                isUsingInMemoryStore = true
+                NSLog("Failed to create persistent ModelContainer, falling back to in-memory store: \(persistentError)")
+            } catch {
+                fatalError("Failed to create ModelContainer: \(error)")
+            }
+        }
 
         let preferences = PreferencesStore()
         let ignoreAppStore = IgnoreAppStore()
@@ -78,12 +94,16 @@ final class AppState: ObservableObject {
         self.textBlockPanelController = textBlockPanelController
         self.clipboardMonitor = clipboardMonitor
         self.hotkeyManager = hotkeyManager
+        self.isUsingInMemoryStore = isUsingInMemoryStore
     }
 
     func start() {
         clipboardMonitor.start()
         hotkeyRegisterStatus = hotkeyManager.register(preferences.hotkey, for: .clipboardPanel)
         textBlockHotkeyRegisterStatus = hotkeyManager.register(preferences.textBlockHotkey, for: .textBlockPanel)
+        if isUsingInMemoryStore {
+            toast.show(message: "无法创建持久化存储，已切换为内存模式（重启后不会保留历史）", duration: 2.4)
+        }
     }
 
     func togglePanel() {
@@ -178,11 +198,11 @@ private extension AppState {
         items.map { entry in
             switch ClipboardEntryKind(raw: entry.kindRaw) {
             case .text:
-                ClipboardPanelEntry(kind: .text, previewText: entry.text, createdAt: entry.createdAt, rtfData: nil, imagePath: nil)
+                ClipboardPanelEntry(kind: .text, previewText: entry.text, createdAt: entry.createdAt, rtfData: nil, imagePath: nil, contentHash: entry.contentHash)
             case .rtf:
-                ClipboardPanelEntry(kind: .rtf, previewText: entry.text, createdAt: entry.createdAt, rtfData: entry.rtfData, imagePath: nil)
+                ClipboardPanelEntry(kind: .rtf, previewText: entry.text, createdAt: entry.createdAt, rtfData: entry.rtfData, imagePath: nil, contentHash: entry.contentHash)
             case .image:
-                ClipboardPanelEntry(kind: .image, previewText: imagePreviewName(from: entry.imagePath), createdAt: entry.createdAt, rtfData: nil, imagePath: entry.imagePath)
+                ClipboardPanelEntry(kind: .image, previewText: imagePreviewName(from: entry.imagePath), createdAt: entry.createdAt, rtfData: nil, imagePath: entry.imagePath, contentHash: entry.contentHash)
             }
         }
     }

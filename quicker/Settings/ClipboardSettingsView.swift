@@ -147,13 +147,13 @@ struct ClipboardSettingsView: View {
             }
         }
         .onAppear(perform: load)
-        .onChange(of: maxHistoryCount) { _ in
-            appState.preferences.maxHistoryCount = maxHistoryCount
+        .onChange(of: maxHistoryCount) { _, newValue in
+            appState.preferences.maxHistoryCount = newValue
             try? appState.clipboardStore.trimToMaxCount()
             appState.refreshPanelEntries()
         }
-        .onChange(of: dedupeAdjacentEnabled) { _ in
-            appState.preferences.dedupeAdjacentEnabled = dedupeAdjacentEnabled
+        .onChange(of: dedupeAdjacentEnabled) { _, newValue in
+            appState.preferences.dedupeAdjacentEnabled = newValue
         }
     }
 
