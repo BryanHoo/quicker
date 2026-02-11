@@ -2,6 +2,7 @@
 .worktrees/
 worktrees/
 .serena/
+.codex/
 
 # Xcode user data
 **/xcuserdata/

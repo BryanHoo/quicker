@@ -38,19 +38,5 @@
 
 ## Agent 额外提示（可选）
 - 默认用简体中文沟通；不要翻译/改写代码标识符、命令与路径。
-- 修改尽量最小化、可回滚；优先用 `xc-testing` 作为测试与结果分析入口（必要时回退 `xcodebuild test`）。
-- 工具优先级：优先用 `xc-build` / `xc-testing` / `xc-meta`（MCP）；当工具不可用或需要纯 CLI 时回退到 `xcodebuild` 等命令。
-- 在 Codex CLI 环境下按任务选择工具：
-  - **Use `xc-build`** when:
-    - Building and fixing errors
-    - Need to clean build artifacts
-    - Discovering schemes/targets in project
-    - Build validation and configuration
-  - **Use `xc-testing`** when:
-    - Running test suites and analyzing results
-    - Need both unit tests and UI automation
-    - Debugging test failures
-  - **Use `xc-meta`** when:
-    - Maintenance tasks (clearing derived data, managing simulators)
-    - Non-coding iOS project operations
-    - Environment housekeeping
+- 修改尽量最小化、可回滚。
+- 工具优先级：优先用 `XcodeBuildMCP`（MCP）；当工具不可用或需要纯 CLI 时回退到 `xcodebuild` 等命令。
