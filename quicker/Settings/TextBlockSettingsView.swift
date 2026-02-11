@@ -347,44 +347,55 @@ private struct TextBlockListCard: View {
         return String(flattened.prefix(80))
     }
 
+    private var summary: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(entry.title)
+                    .font(.headline.weight(.semibold))
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                Text(entry.updatedAt, format: .dateTime.hour().minute())
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            Text(previewText)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityAction { onSelect() }
+    }
+
+    private var actionButtons: some View {
+        VStack(spacing: 6) {
+            Button(action: onEdit) {
+                Label("编辑", systemImage: "square.and.pencil")
+                    .labelStyle(.iconOnly)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("编辑")
+
+            Button(role: .destructive, action: onDelete) {
+                Label("删除", systemImage: "trash")
+                    .labelStyle(.iconOnly)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("删除")
+        }
+        .foregroundStyle(.secondary)
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(entry.title)
-                        .font(.headline.weight(.semibold))
-                        .lineLimit(1)
-                    Spacer(minLength: 8)
-                    Text(entry.updatedAt, format: .dateTime.hour().minute())
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                Text(previewText)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            VStack(spacing: 6) {
-                Button(action: onEdit) {
-                    Label("编辑", systemImage: "square.and.pencil")
-                        .labelStyle(.iconOnly)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .help("编辑")
-
-                Button(role: .destructive, action: onDelete) {
-                    Label("删除", systemImage: "trash")
-                        .labelStyle(.iconOnly)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .help("删除")
-            }
-            .foregroundStyle(.secondary)
+            summary
+            actionButtons
         }
         .padding(11)
         .background(
