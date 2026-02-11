@@ -53,12 +53,12 @@ final class AppState: ObservableObject {
 
         let panelViewModel = ClipboardPanelViewModel(pageSize: 5)
         let panelController = PanelController(viewModel: panelViewModel) { entry, previousApp in
-            Self.pasteClipboardEntry(entry, previousApp: previousApp, pasteService: pasteService, toast: toast)
+            Self.pasteClipboardEntry(entry, previousApp: previousApp, pasteService: pasteService)
         }
 
         let textBlockPanelViewModel = TextBlockPanelViewModel(pageSize: 5)
         let textBlockPanelController = TextBlockPanelController(viewModel: textBlockPanelViewModel) { entry, previousApp in
-            Self.pasteTextBlockEntry(entry, previousApp: previousApp, pasteService: pasteService, toast: toast)
+            Self.pasteTextBlockEntry(entry, previousApp: previousApp, pasteService: pasteService)
         }
 
         let clipboardMonitor = ClipboardMonitor(
@@ -154,20 +154,15 @@ extension AppState {
         _ entry: ClipboardPanelEntry,
         previousApp: RunningApplicationActivating?,
         pasteService: PasteService,
-        toast: ToastPresenter,
         permission: AccessibilityPermissionChecking = SystemAccessibilityPermission()
     ) {
         if permission.isProcessTrusted(promptIfNeeded: true) {
             previousApp?.activate(options: [.activateIgnoringOtherApps])
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                let result = pasteService.paste(entry: makePasteEntry(from: entry))
-                if result == .copiedOnly {
-                    toast.show(message: "已复制到剪贴板（可手动 ⌘V）")
-                }
+                _ = pasteService.paste(entry: makePasteEntry(from: entry))
             }
         } else {
             _ = pasteService.paste(entry: makePasteEntry(from: entry))
-            toast.show(message: "未开启辅助功能，已复制到剪贴板（可手动 ⌘V）")
         }
     }
 
@@ -175,20 +170,15 @@ extension AppState {
         _ entry: TextBlockPanelEntry,
         previousApp: RunningApplicationActivating?,
         pasteService: PasteService,
-        toast: ToastPresenter,
         permission: AccessibilityPermissionChecking = SystemAccessibilityPermission()
     ) {
         if permission.isProcessTrusted(promptIfNeeded: true) {
             previousApp?.activate(options: [.activateIgnoringOtherApps])
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                let result = pasteService.paste(text: entry.content)
-                if result == .copiedOnly {
-                    toast.show(message: "已复制到剪贴板（可手动 ⌘V）")
-                }
+                _ = pasteService.paste(text: entry.content)
             }
         } else {
             _ = pasteService.paste(text: entry.content)
-            toast.show(message: "未开启辅助功能，已复制到剪贴板（可手动 ⌘V）")
         }
     }
 }

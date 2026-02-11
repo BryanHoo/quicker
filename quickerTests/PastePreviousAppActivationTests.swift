@@ -6,14 +6,12 @@ final class PastePreviousAppActivationTests: XCTestCase {
     func testPasteClipboardEntryActivatesPreviousAppIgnoringOtherAppsWhenTrusted() {
         let previousApp = SpyRunningApplication()
         let pasteService = makePasteService(isTrusted: true)
-        let toast = ToastPresenter()
         let entry = ClipboardPanelEntry(kind: .text, previewText: "A", createdAt: Date(), rtfData: nil, imagePath: nil, contentHash: "A")
 
         AppState.pasteClipboardEntry(
             entry,
             previousApp: previousApp,
             pasteService: pasteService,
-            toast: toast,
             permission: FakeAccessibilityPermission(isTrusted: true)
         )
 
@@ -23,14 +21,12 @@ final class PastePreviousAppActivationTests: XCTestCase {
     func testPasteTextBlockEntryActivatesPreviousAppIgnoringOtherAppsWhenTrusted() {
         let previousApp = SpyRunningApplication()
         let pasteService = makePasteService(isTrusted: true)
-        let toast = ToastPresenter()
         let entry = TextBlockPanelEntry(id: UUID(), title: "t", content: "hello")
 
         AppState.pasteTextBlockEntry(
             entry,
             previousApp: previousApp,
             pasteService: pasteService,
-            toast: toast,
             permission: FakeAccessibilityPermission(isTrusted: true)
         )
 
@@ -46,7 +42,6 @@ final class PastePreviousAppActivationTests: XCTestCase {
             entry,
             previousApp: nil,
             pasteService: pasteService,
-            toast: ToastPresenter(),
             permission: permission
         )
 
@@ -62,7 +57,6 @@ final class PastePreviousAppActivationTests: XCTestCase {
             entry,
             previousApp: nil,
             pasteService: pasteService,
-            toast: ToastPresenter(),
             permission: permission
         )
 
