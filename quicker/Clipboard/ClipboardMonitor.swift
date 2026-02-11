@@ -54,6 +54,7 @@ final class ClipboardMonitor {
         timer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) { [weak self] _ in
             self?.pollOnce()
         }
+        timer?.tolerance = pollInterval * 0.15
     }
 
     func stop() {
