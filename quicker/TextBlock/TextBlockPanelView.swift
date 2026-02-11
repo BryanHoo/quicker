@@ -99,39 +99,49 @@ struct TextBlockPanelView: View {
         Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 1)
     }
 
-    private func handleKeyDown(_ event: NSEvent) {
-        if event.keyCode == 53 {
-            onClose()
-            return
+    private func handleKeyDown(_ event: NSEvent) -> Bool {
+        guard
+            let cmd = PanelKeyCommand.interpret(
+                .init(
+                    keyCode: UInt16(event.keyCode),
+                    charactersIgnoringModifiers: event.charactersIgnoringModifiers,
+                    isCommandDown: event.modifierFlags.contains(.command)
+                ),
+                pageSize: viewModel.pageSize
+            )
+        else {
+            return false
         }
 
-        if event.modifierFlags.contains(.command), event.charactersIgnoringModifiers == "," {
+        switch cmd {
+        case .close:
+            onClose()
+            return true
+        case .openSettings:
             onClose()
             DispatchQueue.main.async {
                 NSApp.activate(ignoringOtherApps: true)
                 openSettings()
             }
-            return
-        }
-
-        if event.keyCode == 36 {
+            return true
+        case .confirm:
             if let entry = viewModel.selectedEntry { onInsert(entry) }
-            return
-        }
-
-        switch event.keyCode {
-        case 125: viewModel.moveSelectionDown()
-        case 126: viewModel.moveSelectionUp()
-        case 123: viewModel.previousPage()
-        case 124: viewModel.nextPage()
-        default: break
-        }
-
-        if event.modifierFlags.contains(.command),
-           let number = Int(event.charactersIgnoringModifiers ?? ""),
-           (1...viewModel.pageSize).contains(number),
-           let entry = viewModel.entryForCmdNumber(number) {
-            onInsert(entry)
+            return true
+        case .moveUp:
+            viewModel.moveSelectionUp()
+            return true
+        case .moveDown:
+            viewModel.moveSelectionDown()
+            return true
+        case .previousPage:
+            viewModel.previousPage()
+            return true
+        case .nextPage:
+            viewModel.nextPage()
+            return true
+        case .pasteCmdNumber(let number):
+            if let entry = viewModel.entryForCmdNumber(number) { onInsert(entry) }
+            return true
         }
     }
 }

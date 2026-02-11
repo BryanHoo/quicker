@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 struct KeyEventHandlingView: NSViewRepresentable {
-    var onKeyDown: (NSEvent) -> Void
+    var onKeyDown: (NSEvent) -> Bool
 
     func makeNSView(context: Context) -> NSView {
         let view = KeyCatcherView()
@@ -14,12 +14,15 @@ struct KeyEventHandlingView: NSViewRepresentable {
 }
 
 private final class KeyCatcherView: NSView {
-    var onKeyDown: ((NSEvent) -> Void)?
+    var onKeyDown: ((NSEvent) -> Bool)?
     override var acceptsFirstResponder: Bool { true }
-    override func keyDown(with event: NSEvent) { onKeyDown?(event) }
+    override func keyDown(with event: NSEvent) {
+        let handled = onKeyDown?(event) ?? false
+        if handled { return }
+        super.keyDown(with: event)
+    }
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         window?.makeFirstResponder(self)
     }
 }
-
