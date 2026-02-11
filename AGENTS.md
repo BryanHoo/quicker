@@ -39,4 +39,4 @@
 ## Agent 额外提示（可选）
 - 默认用简体中文沟通；不要翻译/改写代码标识符、命令与路径。
 - 修改尽量最小化、可回滚。
-- 工具优先级：优先用 `XcodeBuildMCP`（MCP）；当工具不可用或需要纯 CLI 时回退到 `xcodebuild` 等命令。
+- 工具优先级：优先用 xcodebuildmcp-cli 命令执行 xcode 相关操作；当工具不可用或需要纯 CLI 时回退到 `xcodebuild` 等命令。
