@@ -109,7 +109,8 @@ struct ClipboardSettingsView: View {
                                 Button {
                                     removeApp(bundleIdentifier: app.bundleIdentifier)
                                 } label: {
-                                    Image(systemName: "minus.circle")
+                                    Label("移除", systemImage: "minus.circle")
+                                        .labelStyle(.iconOnly)
                                 }
                                 .buttonStyle(.borderless)
                                 .foregroundStyle(.secondary)

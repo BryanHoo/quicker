@@ -89,14 +89,16 @@ struct TextBlockSettingsView: View {
 
                 HStack(spacing: 8) {
                     Button(action: moveUp) {
-                        Image(systemName: "arrow.up")
+                        Label("上移", systemImage: "arrow.up")
+                            .labelStyle(.iconOnly)
                     }
                     .buttonStyle(.bordered)
                     .help("上移")
                     .disabled(canMoveUp == false)
 
                     Button(action: moveDown) {
-                        Image(systemName: "arrow.down")
+                        Label("下移", systemImage: "arrow.down")
+                            .labelStyle(.iconOnly)
                     }
                     .buttonStyle(.bordered)
                     .help("下移")
@@ -367,14 +369,16 @@ private struct TextBlockListCard: View {
 
             VStack(spacing: 6) {
                 Button(action: onEdit) {
-                    Image(systemName: "square.and.pencil")
+                    Label("编辑", systemImage: "square.and.pencil")
+                        .labelStyle(.iconOnly)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .help("编辑")
 
                 Button(role: .destructive, action: onDelete) {
-                    Image(systemName: "trash")
+                    Label("删除", systemImage: "trash")
+                        .labelStyle(.iconOnly)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
