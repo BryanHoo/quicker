@@ -31,6 +31,11 @@ final class ToastPresenter {
 
         center(panel)
         panel.orderFrontRegardless()
+        NSAccessibility.post(
+            element: NSApp as Any,
+            notification: .announcementRequested,
+            userInfo: [.announcement: message]
+        )
         window = panel
 
         DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak self] in
@@ -50,4 +55,3 @@ final class ToastPresenter {
         window.setFrameOrigin(origin)
     }
 }
-
