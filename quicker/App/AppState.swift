@@ -157,7 +157,7 @@ extension AppState {
         toast: ToastPresenter,
         permission: AccessibilityPermissionChecking = SystemAccessibilityPermission()
     ) {
-        if permission.isProcessTrusted(promptIfNeeded: false) {
+        if permission.isProcessTrusted(promptIfNeeded: true) {
             previousApp?.activate(options: [.activateIgnoringOtherApps])
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                 let result = pasteService.paste(entry: makePasteEntry(from: entry))
@@ -178,7 +178,7 @@ extension AppState {
         toast: ToastPresenter,
         permission: AccessibilityPermissionChecking = SystemAccessibilityPermission()
     ) {
-        if permission.isProcessTrusted(promptIfNeeded: false) {
+        if permission.isProcessTrusted(promptIfNeeded: true) {
             previousApp?.activate(options: [.activateIgnoringOtherApps])
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                 let result = pasteService.paste(text: entry.content)

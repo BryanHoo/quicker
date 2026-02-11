@@ -36,6 +36,38 @@ final class PastePreviousAppActivationTests: XCTestCase {
 
         XCTAssertEqual(previousApp.activatedOptions?.contains(.activateIgnoringOtherApps), true)
     }
+
+    func testPasteClipboardEntryChecksAccessibilityPermissionWithPromptEnabled() {
+        let pasteService = makePasteService(isTrusted: true)
+        let permission = RecordingAccessibilityPermission(isTrusted: true)
+        let entry = ClipboardPanelEntry(kind: .text, previewText: "A", createdAt: Date(), rtfData: nil, imagePath: nil, contentHash: "A")
+
+        AppState.pasteClipboardEntry(
+            entry,
+            previousApp: nil,
+            pasteService: pasteService,
+            toast: ToastPresenter(),
+            permission: permission
+        )
+
+        XCTAssertEqual(permission.lastPromptIfNeeded, true)
+    }
+
+    func testPasteTextBlockEntryChecksAccessibilityPermissionWithPromptEnabled() {
+        let pasteService = makePasteService(isTrusted: true)
+        let permission = RecordingAccessibilityPermission(isTrusted: true)
+        let entry = TextBlockPanelEntry(id: UUID(), title: "t", content: "hello")
+
+        AppState.pasteTextBlockEntry(
+            entry,
+            previousApp: nil,
+            pasteService: pasteService,
+            toast: ToastPresenter(),
+            permission: permission
+        )
+
+        XCTAssertEqual(permission.lastPromptIfNeeded, true)
+    }
 }
 
 private final class SpyRunningApplication: RunningApplicationActivating {
@@ -69,6 +101,20 @@ private final class SpyPasteEventSender: PasteEventSending {
 private struct FakeAccessibilityPermission: AccessibilityPermissionChecking {
     let isTrusted: Bool
     func isProcessTrusted(promptIfNeeded: Bool) -> Bool { isTrusted }
+}
+
+private final class RecordingAccessibilityPermission: AccessibilityPermissionChecking {
+    private(set) var lastPromptIfNeeded: Bool?
+    private let isTrusted: Bool
+
+    init(isTrusted: Bool) {
+        self.isTrusted = isTrusted
+    }
+
+    func isProcessTrusted(promptIfNeeded: Bool) -> Bool {
+        lastPromptIfNeeded = promptIfNeeded
+        return isTrusted
+    }
 }
 
 private struct FakeAssetStore: ClipboardAssetStoring {
