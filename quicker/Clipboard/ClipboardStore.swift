@@ -16,7 +16,12 @@ final class ClipboardStore {
     private var context: ModelContext { modelContainer.mainContext }
 
     func fetchLatest(limit: Int) throws -> [ClipboardEntry] {
+        try fetchLatest(offset: 0, limit: limit)
+    }
+
+    func fetchLatest(offset: Int, limit: Int) throws -> [ClipboardEntry] {
         var descriptor = FetchDescriptor<ClipboardEntry>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+        descriptor.fetchOffset = offset
         descriptor.fetchLimit = limit
         return try context.fetch(descriptor)
     }
@@ -172,29 +177,31 @@ final class ClipboardStore {
             return
         }
 
-        let all = try fetchLatest(limit: Int.max)
-        guard all.count > maxCount else { return }
+        let probeLimit = maxCount == Int.max ? Int.max : maxCount + 1
+        let probe = try fetchLatest(limit: probeLimit)
+        guard probe.count > maxCount else { return }
 
-        let kept = all.prefix(maxCount)
-        let toDelete = all.dropFirst(maxCount)
-
+        let kept = probe.prefix(maxCount)
         let keptImagePaths: Set<String> = Set(
             kept.compactMap { entry in
                 guard entry.kindRaw == "image", let path = entry.imagePath else { return nil }
                 return path
             }
         )
-        let deleteImagePaths: Set<String> = Set(
-            toDelete.compactMap { entry in
-                guard entry.kindRaw == "image", let path = entry.imagePath else { return nil }
-                return path
-            }
-        )
 
-        for entry in toDelete {
-            context.delete(entry)
+        var deleteImagePaths: Set<String> = []
+        while true {
+            let batch = try fetchLatest(offset: maxCount, limit: 200)
+            guard batch.isEmpty == false else { break }
+
+            for entry in batch {
+                if entry.kindRaw == "image", let path = entry.imagePath {
+                    deleteImagePaths.insert(path)
+                }
+                context.delete(entry)
+            }
+            try context.save()
         }
-        try context.save()
 
         for path in deleteImagePaths.subtracting(keptImagePaths) {
             try assetStore.deleteImage(relativePath: path)
