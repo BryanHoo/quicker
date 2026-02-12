@@ -53,22 +53,6 @@ struct ClipboardSettingsView: View {
                 }
             }
 
-            SettingsSection("隐私与权限") {
-                SettingsRow {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("辅助功能权限")
-                        Text("用于粘贴回原应用，首次使用可能需要授权。")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                } trailing: {
-                    Button("打开系统设置") {
-                        SystemSettingsDeepLink.openAccessibilityPrivacy()
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-            }
-
             SettingsSection("忽略应用") {
                 SettingsRow {
                     VStack(alignment: .leading, spacing: 2) {

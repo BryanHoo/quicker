@@ -26,9 +26,9 @@ struct SettingsView: View {
         var subtitle: String {
             switch self {
             case .general:
-                return "快捷键与启动行为"
+                return "快捷键、启动与权限"
             case .clipboard:
-                return "历史记录、隐私与权限"
+                return "历史记录、忽略应用"
             case .textBlock:
                 return "模板文本管理"
             case .about:
