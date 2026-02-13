@@ -12,21 +12,21 @@ struct QuickerApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            Button("Open Clipboard Panel") {
+            Button("打开剪贴板面板") {
                 appState.togglePanel()
             }
-            Button("Open Text Block Panel") {
+            Button("打开文本块面板") {
                 appState.toggleTextBlockPanel()
             }
             SettingsLink {
-                Text("Settings…")
+                Text("偏好设置…")
             }
             Divider()
-            Button("Clear History") {
+            Button("清空历史") {
                 appState.confirmAndClearHistory()
             }
             Divider()
-            Button("Quit") { NSApp.terminate(nil) }
+            Button("退出") { NSApp.terminate(nil) }
         } label: {
             Image(systemName: "bolt.fill")
                 .symbolRenderingMode(.hierarchical)
