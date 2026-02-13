@@ -2,10 +2,13 @@ import AppKit
 import Combine
 import Carbon
 import Foundation
+import OSLog
 import SwiftData
 
 @MainActor
 final class AppState: ObservableObject {
+    private let logger = Logger(subsystem: "quicker", category: "AppState")
+
     let modelContainer: ModelContainer
     let preferences: PreferencesStore
     let ignoreAppStore: IgnoreAppStore
@@ -26,23 +29,7 @@ final class AppState: ObservableObject {
 
     init() {
         let schema = Schema([ClipboardEntry.self, TextBlockEntry.self])
-        let modelContainer: ModelContainer
-        let isUsingInMemoryStore: Bool
-        do {
-            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-            modelContainer = try ModelContainer(for: schema, configurations: [config])
-            isUsingInMemoryStore = false
-        } catch {
-            let persistentError = error
-            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-            do {
-                modelContainer = try ModelContainer(for: schema, configurations: [config])
-                isUsingInMemoryStore = true
-                NSLog("Failed to create persistent ModelContainer, falling back to in-memory store: \(persistentError)")
-            } catch {
-                fatalError("Failed to create ModelContainer: \(error)")
-            }
-        }
+        let (modelContainer, isUsingInMemoryStore) = Self.createModelContainer(schema: schema)
 
         let preferences = PreferencesStore()
         let ignoreAppStore = IgnoreAppStore()
@@ -67,14 +54,37 @@ final class AppState: ObservableObject {
             logic: ClipboardMonitorLogic(ignoreAppStore: ignoreAppStore, clipboardStore: clipboardStore)
         )
 
+        let appStateLogger = Logger(subsystem: "quicker", category: "AppState")
         let hotkeyManager = HotkeyManager(onHotkeyAction: { action in
             switch AppHotkeyRoute(action: action) {
             case .clipboard:
-                let items = (try? clipboardStore.fetchLatest(limit: 500)) ?? []
+                if isUsingInMemoryStore {
+                    toast.show(message: "当前处于内存模式（无法读取/写入历史）。如果这是开机自启后发生的，请退出并重新打开。", duration: 2.4)
+                }
+
+                let items: [ClipboardEntry]
+                do {
+                    items = try clipboardStore.fetchLatest(limit: 500)
+                } catch {
+                    appStateLogger.error("clipboardStore.fetchLatest(limit:) failed: \(String(describing: error), privacy: .public)")
+                    toast.show(message: "读取剪切板历史失败，请稍后重试或重启。", duration: 2.4)
+                    items = []
+                }
                 panelViewModel.setEntries(Self.makePanelEntries(from: items))
                 panelController.toggle()
             case .textBlock:
-                let items = (try? textBlockStore.fetchAllBySortOrder()) ?? []
+                if isUsingInMemoryStore {
+                    toast.show(message: "当前处于内存模式（无法读取/写入历史）。如果这是开机自启后发生的，请退出并重新打开。", duration: 2.4)
+                }
+
+                let items: [TextBlockEntry]
+                do {
+                    items = try textBlockStore.fetchAllBySortOrder()
+                } catch {
+                    appStateLogger.error("textBlockStore.fetchAllBySortOrder() failed: \(String(describing: error), privacy: .public)")
+                    toast.show(message: "读取文本块失败，请稍后重试或重启。", duration: 2.4)
+                    items = []
+                }
                 textBlockPanelViewModel.setEntries(TextBlockPanelMapper.makeEntries(from: items))
                 textBlockPanelController.toggle()
             }
@@ -97,7 +107,58 @@ final class AppState: ObservableObject {
         self.isUsingInMemoryStore = isUsingInMemoryStore
     }
 
+    private static func createModelContainer(schema: Schema) -> (ModelContainer, Bool) {
+        let logger = Logger(subsystem: "quicker", category: "SwiftData")
+
+        do {
+            let appSupport = try FileManager.default.url(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            )
+            if let bundleId = Bundle.main.bundleIdentifier {
+                let dir = appSupport.appendingPathComponent(bundleId, isDirectory: true)
+                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            }
+        } catch {
+            logger.error("Failed to prepare Application Support directory: \(String(describing: error), privacy: .public)")
+        }
+
+        let retryDelays: [TimeInterval] = [0.12, 0.3, 0.8]
+        var lastError: Error?
+        for attemptIndex in 0...retryDelays.count {
+            let attempt = attemptIndex + 1
+            let retryCount = attemptIndex
+            do {
+                let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+                let container = try ModelContainer(for: schema, configurations: [config])
+                if retryCount > 0 {
+                    logger.info("Created persistent ModelContainer after retryCount=\(retryCount, privacy: .public)")
+                }
+                return (container, false)
+            } catch {
+                lastError = error
+                let nsError = error as NSError
+                logger.error("Failed to create persistent ModelContainer attempt=\(attempt, privacy: .public) domain=\(nsError.domain, privacy: .public) code=\(nsError.code, privacy: .public) error=\(String(describing: error), privacy: .public)")
+                if attemptIndex < retryDelays.count {
+                    Thread.sleep(forTimeInterval: retryDelays[attemptIndex])
+                }
+            }
+        }
+
+        do {
+            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            let container = try ModelContainer(for: schema, configurations: [config])
+            logger.error("Falling back to in-memory ModelContainer due to persistent error: \(String(describing: lastError ?? NSError(domain: "unknown", code: -1, userInfo: nil)), privacy: .public)")
+            return (container, true)
+        } catch {
+            fatalError("Failed to create ModelContainer: \(error)")
+        }
+    }
+
     func start() {
+        logger.info("start() isUsingInMemoryStore=\(self.isUsingInMemoryStore, privacy: .public)")
         clipboardMonitor.start()
         hotkeyRegisterStatus = hotkeyManager.register(preferences.hotkey, for: .clipboardPanel)
         textBlockHotkeyRegisterStatus = hotkeyManager.register(preferences.textBlockHotkey, for: .textBlockPanel)
@@ -107,22 +168,42 @@ final class AppState: ObservableObject {
     }
 
     func togglePanel() {
+        if isUsingInMemoryStore {
+            toast.show(message: "当前处于内存模式（无法读取/写入历史）。如果这是开机自启后发生的，请退出并重新打开。", duration: 2.4)
+        }
         refreshPanelEntries()
         panelController.toggle()
     }
 
     func refreshPanelEntries() {
-        let items = (try? clipboardStore.fetchLatest(limit: 500)) ?? []
+        let items: [ClipboardEntry]
+        do {
+            items = try clipboardStore.fetchLatest(limit: 500)
+        } catch {
+            logger.error("clipboardStore.fetchLatest(limit:) failed: \(String(describing: error), privacy: .public)")
+            toast.show(message: "读取剪切板历史失败，请稍后重试或重启。", duration: 2.4)
+            items = []
+        }
         panelViewModel.setEntries(Self.makePanelEntries(from: items))
     }
 
     func toggleTextBlockPanel() {
+        if isUsingInMemoryStore {
+            toast.show(message: "当前处于内存模式（无法读取/写入历史）。如果这是开机自启后发生的，请退出并重新打开。", duration: 2.4)
+        }
         refreshTextBlockPanelEntries()
         textBlockPanelController.toggle()
     }
 
     func refreshTextBlockPanelEntries() {
-        let items = (try? textBlockStore.fetchAllBySortOrder()) ?? []
+        let items: [TextBlockEntry]
+        do {
+            items = try textBlockStore.fetchAllBySortOrder()
+        } catch {
+            logger.error("textBlockStore.fetchAllBySortOrder() failed: \(String(describing: error), privacy: .public)")
+            toast.show(message: "读取文本块失败，请稍后重试或重启。", duration: 2.4)
+            items = []
+        }
         textBlockPanelViewModel.setEntries(TextBlockPanelMapper.makeEntries(from: items))
     }
 

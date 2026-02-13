@@ -1,8 +1,11 @@
 import Foundation
+import OSLog
 import SwiftData
 
 @MainActor
 final class ClipboardStore {
+    private let logger = Logger(subsystem: "quicker", category: "ClipboardStore")
+
     private let modelContainer: ModelContainer
     private let preferences: PreferencesStore
     private let assetStore: ClipboardAssetStoring
@@ -211,14 +214,29 @@ final class ClipboardStore {
 
 extension ClipboardStore: ClipboardStoreInserting {
     func insert(text: String) {
-        try? insert(text: text, now: .now)
+        do {
+            let inserted = try insert(text: text, now: .now)
+            logger.debug("insert(text:) -> \(inserted, privacy: .public)")
+        } catch {
+            logger.error("insert(text:) failed: \(String(describing: error), privacy: .public)")
+        }
     }
 
     func insertRTF(rtfData: Data, plainText: String, contentHash: String) {
-        _ = try? insertRTF(rtfData: rtfData, plainText: plainText, contentHash: contentHash, now: .now)
+        do {
+            let inserted = try insertRTF(rtfData: rtfData, plainText: plainText, contentHash: contentHash, now: .now)
+            logger.debug("insertRTF(rtfData:plainText:contentHash:) -> \(inserted, privacy: .public)")
+        } catch {
+            logger.error("insertRTF(rtfData:plainText:contentHash:) failed: \(String(describing: error), privacy: .public)")
+        }
     }
 
     func insertImage(pngData: Data, contentHash: String) {
-        _ = try? insertImage(pngData: pngData, contentHash: contentHash, now: .now)
+        do {
+            let inserted = try insertImage(pngData: pngData, contentHash: contentHash, now: .now)
+            logger.debug("insertImage(pngData:contentHash:) -> \(inserted, privacy: .public)")
+        } catch {
+            logger.error("insertImage(pngData:contentHash:) failed: \(String(describing: error), privacy: .public)")
+        }
     }
 }

@@ -65,4 +65,4 @@ jobs:
             build/artifacts/*.dmg
             build/artifacts/*.sha256
           generate_release_notes: true
-
+          prerelease: ${{ contains(github.ref_name, '-') }}
