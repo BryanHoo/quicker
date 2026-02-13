@@ -110,19 +110,52 @@ final class AppState: ObservableObject {
     private static func createModelContainer(schema: Schema) -> (ModelContainer, Bool) {
         let logger = Logger(subsystem: "quicker", category: "SwiftData")
 
-        do {
-            let appSupport = try FileManager.default.url(
-                for: .applicationSupportDirectory,
-                in: .userDomainMask,
-                appropriateFor: nil,
-                create: true
-            )
-            if let bundleId = Bundle.main.bundleIdentifier {
-                let dir = appSupport.appendingPathComponent(bundleId, isDirectory: true)
-                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let fm = FileManager.default
+        let bundleId = Bundle.main.bundleIdentifier ?? "quicker"
+
+        var appSupport = fm.temporaryDirectory
+        let appSupportRetryDelays: [TimeInterval] = [0, 0.12, 0.3, 0.8]
+        for (index, delay) in appSupportRetryDelays.enumerated() {
+            if delay > 0 {
+                Thread.sleep(forTimeInterval: delay)
             }
+            do {
+                appSupport = try fm.url(
+                    for: .applicationSupportDirectory,
+                    in: .userDomainMask,
+                    appropriateFor: nil,
+                    create: true
+                )
+                if index > 0 {
+                    logger.info("Resolved applicationSupportDirectory after retryCount=\(index, privacy: .public)")
+                }
+                break
+            } catch {
+                logger.error("Failed to resolve applicationSupportDirectory retryCount=\(index, privacy: .public) error=\(String(describing: error), privacy: .public)")
+            }
+        }
+
+        let dataDir = appSupport.appendingPathComponent(bundleId, isDirectory: true)
+        do {
+            try fm.createDirectory(at: dataDir, withIntermediateDirectories: true)
         } catch {
-            logger.error("Failed to prepare Application Support directory: \(String(describing: error), privacy: .public)")
+            logger.error("Failed to create SwiftData directory: \(String(describing: error), privacy: .public)")
+        }
+
+        let storeURL = dataDir.appendingPathComponent("quicker.store", isDirectory: false)
+        let legacyStoreURL = appSupport.appendingPathComponent("default.store", isDirectory: false)
+
+        if fm.fileExists(atPath: storeURL.path) == false, fm.fileExists(atPath: legacyStoreURL.path) {
+            if Self.canOpenStore(schema: schema, url: legacyStoreURL) {
+                do {
+                    try Self.copyStoreFiles(from: legacyStoreURL, to: storeURL)
+                    logger.info("Migrated legacy SwiftData store to: \(storeURL.path, privacy: .public)")
+                } catch {
+                    logger.error("Failed to migrate legacy SwiftData store: \(String(describing: error), privacy: .public)")
+                }
+            } else {
+                logger.error("Legacy SwiftData store exists but is incompatible. Ignoring: \(legacyStoreURL.path, privacy: .public)")
+            }
         }
 
         let retryDelays: [TimeInterval] = [0.12, 0.3, 0.8]
@@ -131,8 +164,9 @@ final class AppState: ObservableObject {
             let attempt = attemptIndex + 1
             let retryCount = attemptIndex
             do {
-                let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+                let config = ModelConfiguration(schema: schema, url: storeURL)
                 let container = try ModelContainer(for: schema, configurations: [config])
+                try Self.probeStore(container: container)
                 if retryCount > 0 {
                     logger.info("Created persistent ModelContainer after retryCount=\(retryCount, privacy: .public)")
                 }
@@ -154,6 +188,41 @@ final class AppState: ObservableObject {
             return (container, true)
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
+        }
+    }
+
+    private static func probeStore(container: ModelContainer) throws {
+        var descriptor = FetchDescriptor<ClipboardEntry>()
+        descriptor.fetchLimit = 1
+        _ = try container.mainContext.fetch(descriptor)
+    }
+
+    private static func canOpenStore(schema: Schema, url: URL) -> Bool {
+        do {
+            let config = ModelConfiguration(schema: schema, url: url)
+            let container = try ModelContainer(for: schema, configurations: [config])
+            try probeStore(container: container)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private static func copyStoreFiles(from source: URL, to destination: URL) throws {
+        let fm = FileManager.default
+        try fm.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+
+        let pairs: [(URL, URL)] = [
+            (source, destination),
+            (URL(fileURLWithPath: source.path + "-shm"), URL(fileURLWithPath: destination.path + "-shm")),
+            (URL(fileURLWithPath: source.path + "-wal"), URL(fileURLWithPath: destination.path + "-wal")),
+        ]
+
+        for (src, dst) in pairs where fm.fileExists(atPath: src.path) {
+            if fm.fileExists(atPath: dst.path) {
+                try fm.removeItem(at: dst)
+            }
+            try fm.copyItem(at: src, to: dst)
         }
     }
 
