@@ -7,6 +7,7 @@ enum SettingsWindowStyle {
         window.titlebarAppearsTransparent = true
         window.titlebarSeparatorStyle = .none
         window.styleMask.insert(.fullSizeContentView)
+        window.styleMask.remove(.unifiedTitleAndToolbar)
 
         window.isOpaque = false
         window.backgroundColor = .clear

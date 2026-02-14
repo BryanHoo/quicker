@@ -90,7 +90,6 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .background(SettingsWindowBackground(palette: palette).ignoresSafeArea(.container, edges: .top))
-        .ignoresSafeArea(.container, edges: .top)
         .clipShape(RoundedRectangle(cornerRadius: SettingsTheme.windowCornerRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: SettingsTheme.windowCornerRadius, style: .continuous)
@@ -130,9 +129,8 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(.top, 16)
-            .padding(.leading, 72)
-            .padding(.trailing, 18)
+            .padding(.top, 36)
+            .padding(.horizontal, 18)
 
             VStack(spacing: 8) {
                 ForEach(Tab.allCases) { item in
@@ -177,7 +175,7 @@ struct SettingsView: View {
             Spacer()
         }
         .padding(.horizontal, 22)
-        .padding(.top, 20)
+        .padding(.top, 36)
         .padding(.bottom, 16)
     }
 
