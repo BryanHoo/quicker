@@ -277,7 +277,15 @@ private struct SettingsSidebarBackground: View {
     let palette: SettingsPalette
 
     var body: some View {
-        RoundedRectangle(cornerRadius: SettingsTheme.windowCornerRadius, style: .continuous)
+        let shape = UnevenRoundedRectangle(
+            topLeadingRadius: SettingsTheme.windowCornerRadius,
+            bottomLeadingRadius: SettingsTheme.windowCornerRadius,
+            bottomTrailingRadius: 0,
+            topTrailingRadius: 0,
+            style: .continuous
+        )
+
+        shape
             .fill(palette.sidebarBackground)
             .overlay(
                 LinearGradient(
@@ -288,9 +296,7 @@ private struct SettingsSidebarBackground: View {
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .clipShape(
-                    RoundedRectangle(cornerRadius: SettingsTheme.windowCornerRadius, style: .continuous)
-                )
+                .clipShape(shape)
             )
     }
 }

@@ -12,21 +12,7 @@ struct QuickerApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            Button("打开剪贴板面板") {
-                appState.togglePanel()
-            }
-            Button("打开文本块面板") {
-                appState.toggleTextBlockPanel()
-            }
-            SettingsLink {
-                Text("偏好设置…")
-            }
-            Divider()
-            Button("清空历史") {
-                appState.confirmAndClearHistory()
-            }
-            Divider()
-            Button("退出") { NSApp.terminate(nil) }
+            MenuBarExtraContent(appState: appState)
         } label: {
             Image(systemName: "bolt.fill")
                 .symbolRenderingMode(.hierarchical)
@@ -37,5 +23,31 @@ struct QuickerApp: App {
             SettingsView()
                 .environmentObject(appState)
         }
+    }
+}
+
+private struct MenuBarExtraContent: View {
+    let appState: AppState
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        Button("打开剪贴板面板") {
+            appState.togglePanel()
+        }
+        Button("打开文本块面板") {
+            appState.toggleTextBlockPanel()
+        }
+        Button("偏好设置…") {
+            DispatchQueue.main.async {
+                NSApp.activate(ignoringOtherApps: true)
+                openSettings()
+            }
+        }
+        Divider()
+        Button("清空历史") {
+            appState.confirmAndClearHistory()
+        }
+        Divider()
+        Button("退出") { NSApp.terminate(nil) }
     }
 }

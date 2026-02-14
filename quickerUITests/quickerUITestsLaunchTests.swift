@@ -6,6 +6,7 @@
 //
 
 import XCTest
+import ApplicationServices
 
 final class quickerUITestsLaunchTests: XCTestCase {
 
@@ -19,13 +20,19 @@ final class quickerUITestsLaunchTests: XCTestCase {
 
     @MainActor
     func testLaunch() throws {
+        if !AXIsProcessTrusted() {
+            throw XCTSkip("UI 测试需要启用辅助功能（Accessibility）权限。")
+        }
+
         let app = XCUIApplication()
         app.launch()
 
         // Insert steps here to perform after app launch but before taking a screenshot,
         // such as logging into a test account or navigating somewhere in the app
 
-        let attachment = XCTAttachment(screenshot: app.screenshot())
+        XCTAssertNotEqual(app.state, .notRunning)
+
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = "Launch Screen"
         attachment.lifetime = .keepAlways
         add(attachment)
