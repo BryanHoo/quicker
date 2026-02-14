@@ -129,8 +129,9 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(.top, 36)
-            .padding(.horizontal, 18)
+            .padding(.top, 16)
+            .padding(.leading, 72)
+            .padding(.trailing, 18)
 
             VStack(spacing: 8) {
                 ForEach(Tab.allCases) { item in
@@ -175,7 +176,7 @@ struct SettingsView: View {
             Spacer()
         }
         .padding(.horizontal, 22)
-        .padding(.top, 36)
+        .padding(.top, 20)
         .padding(.bottom, 16)
     }
 

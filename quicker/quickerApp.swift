@@ -23,6 +23,7 @@ struct QuickerApp: App {
             SettingsView()
                 .environmentObject(appState)
         }
+        .windowStyle(.hiddenTitleBar)
     }
 }
 
