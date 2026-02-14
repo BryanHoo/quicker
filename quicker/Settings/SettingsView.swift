@@ -95,9 +95,8 @@ struct SettingsView: View {
             RoundedRectangle(cornerRadius: SettingsTheme.windowCornerRadius, style: .continuous)
                 .stroke(palette.windowBorder, lineWidth: 1)
         )
-        .shadow(color: palette.windowShadow, radius: 26, x: 0, y: 14)
-        .padding(14)
         .frame(width: 820, height: 560)
+        .background(SettingsWindowConfigurator())
     }
 
     private var sidebar: some View {
@@ -130,7 +129,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(.top, 20)
+            .padding(.top, 36)
             .padding(.horizontal, 18)
 
             VStack(spacing: 8) {
@@ -176,7 +175,7 @@ struct SettingsView: View {
             Spacer()
         }
         .padding(.horizontal, 22)
-        .padding(.top, 20)
+        .padding(.top, 36)
         .padding(.bottom, 16)
     }
 
