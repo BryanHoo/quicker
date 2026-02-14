@@ -89,7 +89,8 @@ struct SettingsView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .background(SettingsWindowBackground(palette: palette))
+        .background(SettingsWindowBackground(palette: palette).ignoresSafeArea(.container, edges: .top))
+        .ignoresSafeArea(.container, edges: .top)
         .clipShape(RoundedRectangle(cornerRadius: SettingsTheme.windowCornerRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: SettingsTheme.windowCornerRadius, style: .continuous)
