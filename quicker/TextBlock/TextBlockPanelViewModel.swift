@@ -5,6 +5,10 @@ import Foundation
 final class TextBlockPanelViewModel: ObservableObject {
     let pageSize: Int
 
+    @Published var searchQuery: String = "" {
+        didSet { resetPagingForSearchIfNeeded(oldValue: oldValue) }
+    }
+
     @Published private(set) var entries: [TextBlockPanelEntry]
     @Published private(set) var pageIndex: Int = 0
     @Published private(set) var selectedIndexInPage: Int = 0
@@ -14,30 +18,43 @@ final class TextBlockPanelViewModel: ObservableObject {
         self.entries = entries
     }
 
-    var pageCount: Int { Pagination.pageCount(totalCount: entries.count, pageSize: pageSize) }
+    private var normalizedSearchQuery: String {
+        searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var filteredEntries: [TextBlockPanelEntry] {
+        let query = normalizedSearchQuery
+        guard query.isEmpty == false else { return entries }
+        return entries.filter { entry in
+            entry.title.localizedStandardContains(query) || entry.content.localizedStandardContains(query)
+        }
+    }
+
+    var pageCount: Int { Pagination.pageCount(totalCount: filteredEntries.count, pageSize: pageSize) }
 
     var visibleRange: Range<Int> {
-        Pagination.rangeForPage(pageIndex: pageIndex, totalCount: entries.count, pageSize: pageSize)
+        Pagination.rangeForPage(pageIndex: pageIndex, totalCount: filteredEntries.count, pageSize: pageSize)
     }
 
     var visibleEntries: ArraySlice<TextBlockPanelEntry> {
-        entries[visibleRange]
+        filteredEntries[visibleRange]
     }
 
     var selectedEntry: TextBlockPanelEntry? {
         let absolute = visibleRange.lowerBound + selectedIndexInPage
-        guard absolute < entries.count else { return nil }
-        return entries[absolute]
+        guard absolute < filteredEntries.count else { return nil }
+        return filteredEntries[absolute]
     }
 
     func setEntries(_ newEntries: [TextBlockPanelEntry]) {
         entries = newEntries
+        searchQuery = ""
         pageIndex = 0
         selectedIndexInPage = 0
     }
 
     func moveSelectionUp() {
-        guard entries.isEmpty == false else { return }
+        guard filteredEntries.isEmpty == false else { return }
         if selectedIndexInPage > 0 {
             selectedIndexInPage -= 1
             return
@@ -48,7 +65,7 @@ final class TextBlockPanelViewModel: ObservableObject {
     }
 
     func moveSelectionDown() {
-        guard entries.isEmpty == false else { return }
+        guard filteredEntries.isEmpty == false else { return }
         let maxIndex = max(0, visibleEntries.count - 1)
         if selectedIndexInPage < maxIndex {
             selectedIndexInPage += 1
@@ -80,10 +97,16 @@ final class TextBlockPanelViewModel: ObservableObject {
             let absolute = Pagination.absoluteIndexForCmdNumber(
                 cmdNumber: number,
                 pageIndex: pageIndex,
-                totalCount: entries.count,
+                totalCount: filteredEntries.count,
                 pageSize: pageSize
             )
         else { return nil }
-        return entries[absolute]
+        return filteredEntries[absolute]
+    }
+
+    private func resetPagingForSearchIfNeeded(oldValue: String) {
+        if oldValue == searchQuery { return }
+        pageIndex = 0
+        selectedIndexInPage = 0
     }
 }
