@@ -5,6 +5,10 @@ import Foundation
 final class ClipboardPanelViewModel: ObservableObject {
     let pageSize: Int
 
+    @Published var searchQuery: String = "" {
+        didSet { resetPagingForSearchIfNeeded(oldValue: oldValue) }
+    }
+
     @Published private(set) var entries: [ClipboardPanelEntry]
     @Published private(set) var pageIndex: Int = 0
     @Published private(set) var selectedIndexInPage: Int = 0
@@ -14,30 +18,41 @@ final class ClipboardPanelViewModel: ObservableObject {
         self.entries = entries
     }
 
-    var pageCount: Int { Pagination.pageCount(totalCount: entries.count, pageSize: pageSize) }
+    private var normalizedSearchQuery: String {
+        searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var filteredEntries: [ClipboardPanelEntry] {
+        let query = normalizedSearchQuery
+        guard query.isEmpty == false else { return entries }
+        return entries.filter { $0.previewText.localizedStandardContains(query) }
+    }
+
+    var pageCount: Int { Pagination.pageCount(totalCount: filteredEntries.count, pageSize: pageSize) }
 
     var visibleRange: Range<Int> {
-        Pagination.rangeForPage(pageIndex: pageIndex, totalCount: entries.count, pageSize: pageSize)
+        Pagination.rangeForPage(pageIndex: pageIndex, totalCount: filteredEntries.count, pageSize: pageSize)
     }
 
     var visibleEntries: ArraySlice<ClipboardPanelEntry> {
-        entries[visibleRange]
+        filteredEntries[visibleRange]
     }
 
     var selectedEntry: ClipboardPanelEntry? {
         let absoluteIndex = visibleRange.lowerBound + selectedIndexInPage
-        guard absoluteIndex < entries.count else { return nil }
-        return entries[absoluteIndex]
+        guard absoluteIndex < filteredEntries.count else { return nil }
+        return filteredEntries[absoluteIndex]
     }
 
     func setEntries(_ newEntries: [ClipboardPanelEntry]) {
         entries = newEntries
+        searchQuery = ""
         pageIndex = 0
         selectedIndexInPage = 0
     }
 
     func moveSelectionUp() {
-        guard !entries.isEmpty else { return }
+        guard filteredEntries.isEmpty == false else { return }
 
         if selectedIndexInPage > 0 {
             selectedIndexInPage -= 1
@@ -50,7 +65,7 @@ final class ClipboardPanelViewModel: ObservableObject {
     }
 
     func moveSelectionDown() {
-        guard !entries.isEmpty else { return }
+        guard filteredEntries.isEmpty == false else { return }
 
         let maxIndex = max(0, visibleEntries.count - 1)
         if selectedIndexInPage < maxIndex {
@@ -80,9 +95,15 @@ final class ClipboardPanelViewModel: ObservableObject {
     }
 
     func entryForCmdNumber(_ number: Int) -> ClipboardPanelEntry? {
-        guard let absolute = Pagination.absoluteIndexForCmdNumber(cmdNumber: number, pageIndex: pageIndex, totalCount: entries.count, pageSize: pageSize) else {
+        guard let absolute = Pagination.absoluteIndexForCmdNumber(cmdNumber: number, pageIndex: pageIndex, totalCount: filteredEntries.count, pageSize: pageSize) else {
             return nil
         }
-        return entries[absolute]
+        return filteredEntries[absolute]
+    }
+
+    private func resetPagingForSearchIfNeeded(oldValue: String) {
+        if oldValue == searchQuery { return }
+        pageIndex = 0
+        selectedIndexInPage = 0
     }
 }
