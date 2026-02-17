@@ -8,6 +8,7 @@ struct ClipboardPanelView: View {
 
     @ObservedObject var viewModel: ClipboardPanelViewModel
     @Environment(\.openSettings) private var openSettings
+    @FocusState private var isSearchFocused: Bool
     var onClose: () -> Void
     var onPaste: (ClipboardPanelEntry) -> Void
     private let sectionSpacing: CGFloat = Theme.sectionSpacing
@@ -17,6 +18,12 @@ struct ClipboardPanelView: View {
             KeyEventHandlingView { event in
                 handleKeyDown(event)
             }
+
+            PanelKeyCommandMonitor(
+                panelIdentifier: PanelWindowIdentifier.clipboardPanel,
+                pageSize: viewModel.pageSize,
+                onCommand: handlePanelCommand
+            )
 
             VStack(alignment: .leading, spacing: 0) {
                 header
@@ -48,17 +55,52 @@ struct ClipboardPanelView: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            if NSApp.keyWindow?.identifier == PanelWindowIdentifier.clipboardPanel {
+                isSearchFocused = true
+            }
+        }
     }
 
     private var header: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "doc.on.clipboard")
-                .font(Theme.headerFont)
-                .foregroundStyle(.secondary)
-            Text("剪贴板")
-                .font(Theme.headerFont)
-            Spacer()
-            KeyHint(symbol: "⌘,", description: "设置")
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: "doc.on.clipboard")
+                    .font(Theme.headerFont)
+                    .foregroundStyle(.secondary)
+                Text("剪贴板")
+                    .font(Theme.headerFont)
+                Spacer()
+                KeyHint(symbol: "⌘,", description: "设置")
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+
+                TextField("搜索", text: $viewModel.searchQuery)
+                    .font(Theme.rowTextFont)
+                    .textFieldStyle(.plain)
+                    .focused($isSearchFocused)
+
+                if viewModel.searchQuery.isEmpty == false {
+                    Button {
+                        viewModel.searchQuery = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("清除")
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(.quaternary.opacity(Theme.keyCapBackgroundOpacity), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(Theme.keyCapBorderOpacity), lineWidth: 1)
+            )
         }
     }
 
@@ -76,6 +118,15 @@ struct ClipboardPanelView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     Text("暂无历史记录")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                }
+            } else if viewModel.filteredEntries.isEmpty {
+                if #available(macOS 14.0, *) {
+                    ContentUnavailableView("无匹配结果", systemImage: "magnifyingglass")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    Text("无匹配结果")
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 }
@@ -138,6 +189,10 @@ struct ClipboardPanelView: View {
             return false
         }
 
+        return handlePanelCommand(cmd)
+    }
+
+    private func handlePanelCommand(_ cmd: PanelKeyCommand) -> Bool {
         switch cmd {
         case .close:
             onClose()

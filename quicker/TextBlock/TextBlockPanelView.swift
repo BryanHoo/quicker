@@ -6,12 +6,20 @@ struct TextBlockPanelView: View {
 
     @ObservedObject var viewModel: TextBlockPanelViewModel
     @Environment(\.openSettings) private var openSettings
+    @FocusState private var isSearchFocused: Bool
     var onClose: () -> Void
     var onInsert: (TextBlockPanelEntry) -> Void
 
     var body: some View {
         ZStack {
             KeyEventHandlingView { handleKeyDown($0) }
+
+            PanelKeyCommandMonitor(
+                panelIdentifier: PanelWindowIdentifier.textBlockPanel,
+                pageSize: viewModel.pageSize,
+                onCommand: handlePanelCommand
+            )
+
             VStack(alignment: .leading, spacing: 0) {
                 header
                 divider
@@ -25,14 +33,49 @@ struct TextBlockPanelView: View {
             .background(Theme.background)
             .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            if NSApp.keyWindow?.identifier == PanelWindowIdentifier.textBlockPanel {
+                isSearchFocused = true
+            }
+        }
     }
 
     private var header: some View {
-        HStack {
-            Image(systemName: "text.bubble")
-            Text("文本块")
-            Spacer()
-            Text("⌘, 设置").foregroundStyle(.secondary)
+        VStack(spacing: 10) {
+            HStack {
+                Image(systemName: "text.bubble")
+                Text("文本块")
+                Spacer()
+                Text("⌘, 设置").foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+
+                TextField("搜索", text: $viewModel.searchQuery)
+                    .font(.system(size: 13))
+                    .textFieldStyle(.plain)
+                    .focused($isSearchFocused)
+
+                if viewModel.searchQuery.isEmpty == false {
+                    Button {
+                        viewModel.searchQuery = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("清除")
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(.quaternary.opacity(Theme.keyCapBackgroundOpacity), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(Theme.keyCapBorderOpacity), lineWidth: 1)
+            )
         }
         .font(.system(size: 14, weight: .semibold))
         .padding(.bottom, 10)
@@ -44,6 +87,15 @@ struct TextBlockPanelView: View {
                 Text("暂无文本块，请到设置中新增")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if viewModel.filteredEntries.isEmpty {
+                if #available(macOS 14.0, *) {
+                    ContentUnavailableView("无匹配结果", systemImage: "magnifyingglass")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    Text("无匹配结果")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             } else {
                 ScrollView {
                     LazyVStack(spacing: 4) {
@@ -115,6 +167,10 @@ struct TextBlockPanelView: View {
             return false
         }
 
+        return handlePanelCommand(cmd)
+    }
+
+    private func handlePanelCommand(_ cmd: PanelKeyCommand) -> Bool {
         switch cmd {
         case .close:
             onClose()
