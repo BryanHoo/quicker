@@ -55,8 +55,17 @@ struct ClipboardPanelView: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
-            if NSApp.keyWindow?.identifier == PanelWindowIdentifier.clipboardPanel {
+        .onAppear {
+            DispatchQueue.main.async {
+                isSearchFocused = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
+            guard let window = notification.object as? NSWindow,
+                  window.identifier == PanelWindowIdentifier.clipboardPanel
+            else { return }
+
+            DispatchQueue.main.async {
                 isSearchFocused = true
             }
         }
