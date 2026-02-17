@@ -84,6 +84,7 @@ final class PanelController: NSObject, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
+        panel.identifier = PanelWindowIdentifier.clipboardPanel
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false

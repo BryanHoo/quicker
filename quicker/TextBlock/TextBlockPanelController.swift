@@ -79,6 +79,7 @@ final class TextBlockPanelController: NSObject, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
+        panel.identifier = PanelWindowIdentifier.textBlockPanel
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
