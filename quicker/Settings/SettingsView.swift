@@ -90,9 +90,9 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .background(SettingsWindowBackground(palette: palette).ignoresSafeArea(.container, edges: .top))
-        .clipShape(RoundedRectangle(cornerRadius: SettingsTheme.windowCornerRadius, style: .continuous))
+        .clipShape(SettingsTheme.windowShape)
         .overlay(
-            RoundedRectangle(cornerRadius: SettingsTheme.windowCornerRadius, style: .continuous)
+            SettingsTheme.windowShape
                 .stroke(palette.windowBorder, lineWidth: 1)
         )
         .frame(width: 820, height: 560)
@@ -248,7 +248,7 @@ private struct SettingsWindowBackground: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: SettingsTheme.windowCornerRadius, style: .continuous)
+            SettingsTheme.windowShape
                 .fill(palette.windowBackground)
 
             LinearGradient(
@@ -259,7 +259,7 @@ private struct SettingsWindowBackground: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .clipShape(RoundedRectangle(cornerRadius: SettingsTheme.windowCornerRadius, style: .continuous))
+            .clipShape(SettingsTheme.windowShape)
 
             RadialGradient(
                 colors: [palette.windowGlow, .clear],
@@ -267,7 +267,7 @@ private struct SettingsWindowBackground: View {
                 startRadius: 8,
                 endRadius: 300
             )
-            .clipShape(RoundedRectangle(cornerRadius: SettingsTheme.windowCornerRadius, style: .continuous))
+            .clipShape(SettingsTheme.windowShape)
         }
     }
 }
@@ -277,7 +277,7 @@ private struct SettingsSidebarBackground: View {
 
     var body: some View {
         let shape = UnevenRoundedRectangle(
-            topLeadingRadius: SettingsTheme.windowCornerRadius,
+            topLeadingRadius: 0,
             bottomLeadingRadius: SettingsTheme.windowCornerRadius,
             bottomTrailingRadius: 0,
             topTrailingRadius: 0,
@@ -418,6 +418,15 @@ enum SettingsTheme {
     static let cardCornerRadius: CGFloat = 16
     static let sectionSpacing: CGFloat = 18
     static let cardOuterInset: CGFloat = 6
+    static var windowShape: UnevenRoundedRectangle {
+        UnevenRoundedRectangle(
+            topLeadingRadius: 0,
+            bottomLeadingRadius: SettingsTheme.windowCornerRadius,
+            bottomTrailingRadius: SettingsTheme.windowCornerRadius,
+            topTrailingRadius: 0,
+            style: .continuous
+        )
+    }
 
     static func palette(for colorScheme: ColorScheme) -> SettingsPalette {
         if colorScheme == .dark {
