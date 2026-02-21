@@ -6,13 +6,17 @@ final class PastePreviousAppActivationTests: XCTestCase {
     func testPasteClipboardEntryActivatesPreviousAppIgnoringOtherAppsWhenTrusted() {
         let previousApp = SpyRunningApplication()
         let pasteService = makePasteService(isTrusted: true)
+        let tracker = AccessibilityPermissionTransitionTracker()
+        let relaunchCoordinator = SpyRelaunchCoordinator()
         let entry = ClipboardPanelEntry(kind: .text, previewText: "A", createdAt: Date(), rtfData: nil, imagePath: nil, contentHash: "A")
 
         AppState.pasteClipboardEntry(
             entry,
             previousApp: previousApp,
             pasteService: pasteService,
-            permission: FakeAccessibilityPermission(isTrusted: true)
+            permission: FakeAccessibilityPermission(isTrusted: true),
+            permissionTransitionTracker: tracker,
+            relaunchCoordinator: relaunchCoordinator
         )
 
         XCTAssertEqual(previousApp.activatedOptions?.contains(.activateIgnoringOtherApps), true)
@@ -21,13 +25,17 @@ final class PastePreviousAppActivationTests: XCTestCase {
     func testPasteTextBlockEntryActivatesPreviousAppIgnoringOtherAppsWhenTrusted() {
         let previousApp = SpyRunningApplication()
         let pasteService = makePasteService(isTrusted: true)
+        let tracker = AccessibilityPermissionTransitionTracker()
+        let relaunchCoordinator = SpyRelaunchCoordinator()
         let entry = TextBlockPanelEntry(id: UUID(), title: "t", content: "hello")
 
         AppState.pasteTextBlockEntry(
             entry,
             previousApp: previousApp,
             pasteService: pasteService,
-            permission: FakeAccessibilityPermission(isTrusted: true)
+            permission: FakeAccessibilityPermission(isTrusted: true),
+            permissionTransitionTracker: tracker,
+            relaunchCoordinator: relaunchCoordinator
         )
 
         XCTAssertEqual(previousApp.activatedOptions?.contains(.activateIgnoringOtherApps), true)
@@ -36,13 +44,17 @@ final class PastePreviousAppActivationTests: XCTestCase {
     func testPasteClipboardEntryChecksAccessibilityPermissionWithPromptEnabled() {
         let pasteService = makePasteService(isTrusted: true)
         let permission = RecordingAccessibilityPermission(isTrusted: true)
+        let tracker = AccessibilityPermissionTransitionTracker()
+        let relaunchCoordinator = SpyRelaunchCoordinator()
         let entry = ClipboardPanelEntry(kind: .text, previewText: "A", createdAt: Date(), rtfData: nil, imagePath: nil, contentHash: "A")
 
         AppState.pasteClipboardEntry(
             entry,
             previousApp: nil,
             pasteService: pasteService,
-            permission: permission
+            permission: permission,
+            permissionTransitionTracker: tracker,
+            relaunchCoordinator: relaunchCoordinator
         )
 
         XCTAssertEqual(permission.lastPromptIfNeeded, true)
@@ -51,16 +63,188 @@ final class PastePreviousAppActivationTests: XCTestCase {
     func testPasteTextBlockEntryChecksAccessibilityPermissionWithPromptEnabled() {
         let pasteService = makePasteService(isTrusted: true)
         let permission = RecordingAccessibilityPermission(isTrusted: true)
+        let tracker = AccessibilityPermissionTransitionTracker()
+        let relaunchCoordinator = SpyRelaunchCoordinator()
         let entry = TextBlockPanelEntry(id: UUID(), title: "t", content: "hello")
 
         AppState.pasteTextBlockEntry(
             entry,
             previousApp: nil,
             pasteService: pasteService,
-            permission: permission
+            permission: permission,
+            permissionTransitionTracker: tracker,
+            relaunchCoordinator: relaunchCoordinator
         )
 
         XCTAssertEqual(permission.lastPromptIfNeeded, true)
+    }
+
+    func testPasteClipboardEntryPromptsRelaunchOnFirstTrustAfterUntrusted() {
+        let previousApp = SpyRunningApplication()
+        let pasteService = makePasteService(isTrusted: true)
+        let permission = SequenceAccessibilityPermission(values: [false, true])
+        let tracker = AccessibilityPermissionTransitionTracker()
+        let relaunchCoordinator = SpyRelaunchCoordinator()
+        let entry = ClipboardPanelEntry(kind: .text, previewText: "A", createdAt: Date(), rtfData: nil, imagePath: nil, contentHash: "A")
+
+        AppState.pasteClipboardEntry(
+            entry,
+            previousApp: previousApp,
+            pasteService: pasteService,
+            permission: permission,
+            permissionTransitionTracker: tracker,
+            relaunchCoordinator: relaunchCoordinator
+        )
+        AppState.pasteClipboardEntry(
+            entry,
+            previousApp: previousApp,
+            pasteService: pasteService,
+            permission: permission,
+            permissionTransitionTracker: tracker,
+            relaunchCoordinator: relaunchCoordinator
+        )
+
+        let expectation = expectation(description: "Delayed relaunch prompt")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 0.3)
+
+        XCTAssertEqual(relaunchCoordinator.promptCount, 1)
+    }
+
+    func testPasteClipboardEntryActivatesPreviousAppWhenRestartRequired() {
+        let previousApp = SpyRunningApplication()
+        let pasteService = makePasteService(isTrusted: true)
+        let permission = SequenceAccessibilityPermission(values: [false, true])
+        let tracker = AccessibilityPermissionTransitionTracker()
+        let relaunchCoordinator = SpyRelaunchCoordinator()
+        let entry = ClipboardPanelEntry(kind: .text, previewText: "A", createdAt: Date(), rtfData: nil, imagePath: nil, contentHash: "A")
+
+        AppState.pasteClipboardEntry(
+            entry,
+            previousApp: previousApp,
+            pasteService: pasteService,
+            permission: permission,
+            permissionTransitionTracker: tracker,
+            relaunchCoordinator: relaunchCoordinator
+        )
+        AppState.pasteClipboardEntry(
+            entry,
+            previousApp: previousApp,
+            pasteService: pasteService,
+            permission: permission,
+            permissionTransitionTracker: tracker,
+            relaunchCoordinator: relaunchCoordinator
+        )
+
+        XCTAssertEqual(previousApp.activatedOptions?.contains(.activateIgnoringOtherApps), true)
+    }
+
+    func testPasteTextBlockEntryActivatesPreviousAppWhenRestartRequired() {
+        let previousApp = SpyRunningApplication()
+        let pasteService = makePasteService(isTrusted: true)
+        let permission = SequenceAccessibilityPermission(values: [false, true])
+        let tracker = AccessibilityPermissionTransitionTracker()
+        let relaunchCoordinator = SpyRelaunchCoordinator()
+        let entry = TextBlockPanelEntry(id: UUID(), title: "t", content: "hello")
+
+        AppState.pasteTextBlockEntry(
+            entry,
+            previousApp: previousApp,
+            pasteService: pasteService,
+            permission: permission,
+            permissionTransitionTracker: tracker,
+            relaunchCoordinator: relaunchCoordinator
+        )
+        AppState.pasteTextBlockEntry(
+            entry,
+            previousApp: previousApp,
+            pasteService: pasteService,
+            permission: permission,
+            permissionTransitionTracker: tracker,
+            relaunchCoordinator: relaunchCoordinator
+        )
+
+        XCTAssertEqual(previousApp.activatedOptions?.contains(.activateIgnoringOtherApps), true)
+    }
+
+    func testPasteClipboardEntryDelaysPasteAndPromptWhenRestartRequired() {
+        let previousApp = SpyRunningApplication()
+        let writer = CountingPasteboardWriter()
+        let pasteService = makePasteService(isTrusted: true, writer: writer)
+        let permission = SequenceAccessibilityPermission(values: [false, true])
+        let tracker = AccessibilityPermissionTransitionTracker()
+        let relaunchCoordinator = SpyRelaunchCoordinator()
+        let entry = ClipboardPanelEntry(kind: .text, previewText: "A", createdAt: Date(), rtfData: nil, imagePath: nil, contentHash: "A")
+
+        AppState.pasteClipboardEntry(
+            entry,
+            previousApp: previousApp,
+            pasteService: pasteService,
+            permission: permission,
+            permissionTransitionTracker: tracker,
+            relaunchCoordinator: relaunchCoordinator
+        )
+        AppState.pasteClipboardEntry(
+            entry,
+            previousApp: previousApp,
+            pasteService: pasteService,
+            permission: permission,
+            permissionTransitionTracker: tracker,
+            relaunchCoordinator: relaunchCoordinator
+        )
+
+        XCTAssertEqual(writer.stringWriteCount, 1)
+        XCTAssertEqual(relaunchCoordinator.promptCount, 0)
+
+        let expectation = expectation(description: "Delayed restartRequired paste")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 0.3)
+
+        XCTAssertEqual(writer.stringWriteCount, 2)
+        XCTAssertEqual(relaunchCoordinator.promptCount, 1)
+    }
+
+    func testPasteTextBlockEntryDelaysPasteAndPromptWhenRestartRequired() {
+        let previousApp = SpyRunningApplication()
+        let writer = CountingPasteboardWriter()
+        let pasteService = makePasteService(isTrusted: true, writer: writer)
+        let permission = SequenceAccessibilityPermission(values: [false, true])
+        let tracker = AccessibilityPermissionTransitionTracker()
+        let relaunchCoordinator = SpyRelaunchCoordinator()
+        let entry = TextBlockPanelEntry(id: UUID(), title: "t", content: "hello")
+
+        AppState.pasteTextBlockEntry(
+            entry,
+            previousApp: previousApp,
+            pasteService: pasteService,
+            permission: permission,
+            permissionTransitionTracker: tracker,
+            relaunchCoordinator: relaunchCoordinator
+        )
+        AppState.pasteTextBlockEntry(
+            entry,
+            previousApp: previousApp,
+            pasteService: pasteService,
+            permission: permission,
+            permissionTransitionTracker: tracker,
+            relaunchCoordinator: relaunchCoordinator
+        )
+
+        XCTAssertEqual(writer.stringWriteCount, 1)
+        XCTAssertEqual(relaunchCoordinator.promptCount, 0)
+
+        let expectation = expectation(description: "Delayed restartRequired text block paste")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 0.3)
+
+        XCTAssertEqual(writer.stringWriteCount, 2)
+        XCTAssertEqual(relaunchCoordinator.promptCount, 1)
     }
 }
 
@@ -73,10 +257,14 @@ private final class SpyRunningApplication: RunningApplicationActivating {
     }
 }
 
-private func makePasteService(isTrusted: Bool) -> PasteService {
+private func makePasteService(
+    isTrusted: Bool,
+    writer: PasteboardWriting = SpyPasteboardWriter(),
+    eventSender: PasteEventSending = SpyPasteEventSender()
+) -> PasteService {
     PasteService(
-        writer: SpyPasteboardWriter(),
-        eventSender: SpyPasteEventSender(),
+        writer: writer,
+        eventSender: eventSender,
         permission: FakeAccessibilityPermission(isTrusted: isTrusted),
         assetStore: FakeAssetStore()
     )
@@ -90,6 +278,22 @@ private final class SpyPasteboardWriter: PasteboardWriting {
 
 private final class SpyPasteEventSender: PasteEventSending {
     func sendCmdV() {}
+}
+
+private final class CountingPasteboardWriter: PasteboardWriting {
+    private(set) var stringWriteCount = 0
+
+    func writeString(_ string: String) {
+        stringWriteCount += 1
+    }
+
+    func writeRTF(_ rtf: Data, plainText: String) {
+        stringWriteCount += 1
+    }
+
+    func writePNG(_ png: Data) {
+        stringWriteCount += 1
+    }
 }
 
 private struct FakeAccessibilityPermission: AccessibilityPermissionChecking {
@@ -108,6 +312,29 @@ private final class RecordingAccessibilityPermission: AccessibilityPermissionChe
     func isProcessTrusted(promptIfNeeded: Bool) -> Bool {
         lastPromptIfNeeded = promptIfNeeded
         return isTrusted
+    }
+}
+
+private final class SequenceAccessibilityPermission: AccessibilityPermissionChecking {
+    private let values: [Bool]
+    private var currentIndex = 0
+
+    init(values: [Bool]) {
+        self.values = values
+    }
+
+    func isProcessTrusted(promptIfNeeded: Bool) -> Bool {
+        guard currentIndex < values.count else { return values.last ?? false }
+        defer { currentIndex += 1 }
+        return values[currentIndex]
+    }
+}
+
+private final class SpyRelaunchCoordinator: AccessibilityPermissionRelaunchCoordinating {
+    private(set) var promptCount = 0
+
+    func promptForRelaunchAfterPermissionGrant() {
+        promptCount += 1
     }
 }
 

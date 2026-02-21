@@ -36,16 +36,30 @@ final class AppState: ObservableObject {
         let clipboardStore = ClipboardStore(modelContainer: modelContainer, preferences: preferences)
         let textBlockStore = TextBlockStore(modelContainer: modelContainer)
         let pasteService = PasteService()
+        let permissionTransitionTracker = AccessibilityPermissionTransitionTracker()
+        let permissionRelaunchCoordinator = SystemAccessibilityPermissionRelaunchCoordinator()
         let toast = ToastPresenter()
 
         let panelViewModel = ClipboardPanelViewModel(pageSize: 5)
         let panelController = PanelController(viewModel: panelViewModel) { entry, previousApp in
-            Self.pasteClipboardEntry(entry, previousApp: previousApp, pasteService: pasteService)
+            Self.pasteClipboardEntry(
+                entry,
+                previousApp: previousApp,
+                pasteService: pasteService,
+                permissionTransitionTracker: permissionTransitionTracker,
+                relaunchCoordinator: permissionRelaunchCoordinator
+            )
         }
 
         let textBlockPanelViewModel = TextBlockPanelViewModel(pageSize: 5)
         let textBlockPanelController = TextBlockPanelController(viewModel: textBlockPanelViewModel) { entry, previousApp in
-            Self.pasteTextBlockEntry(entry, previousApp: previousApp, pasteService: pasteService)
+            Self.pasteTextBlockEntry(
+                entry,
+                previousApp: previousApp,
+                pasteService: pasteService,
+                permissionTransitionTracker: permissionTransitionTracker,
+                relaunchCoordinator: permissionRelaunchCoordinator
+            )
         }
 
         let clipboardMonitor = ClipboardMonitor(
@@ -304,15 +318,26 @@ extension AppState {
         _ entry: ClipboardPanelEntry,
         previousApp: RunningApplicationActivating?,
         pasteService: PasteService,
-        permission: AccessibilityPermissionChecking = SystemAccessibilityPermission()
+        permission: AccessibilityPermissionChecking = SystemAccessibilityPermission(),
+        permissionTransitionTracker: AccessibilityPermissionTransitionTracking,
+        relaunchCoordinator: AccessibilityPermissionRelaunchCoordinating
     ) {
-        if permission.isProcessTrusted(promptIfNeeded: true) {
+        let isTrusted = permission.isProcessTrusted(promptIfNeeded: true)
+
+        switch permissionTransitionTracker.decision(for: isTrusted) {
+        case .paste:
             previousApp?.activate(options: [.activateIgnoringOtherApps])
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                 _ = pasteService.paste(entry: makePasteEntry(from: entry))
             }
-        } else {
+        case .copyOnly:
             _ = pasteService.paste(entry: makePasteEntry(from: entry))
+        case .restartRequired:
+            previousApp?.activate(options: [.activateIgnoringOtherApps])
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                _ = pasteService.paste(entry: makePasteEntry(from: entry))
+                relaunchCoordinator.promptForRelaunchAfterPermissionGrant()
+            }
         }
     }
 
@@ -320,15 +345,26 @@ extension AppState {
         _ entry: TextBlockPanelEntry,
         previousApp: RunningApplicationActivating?,
         pasteService: PasteService,
-        permission: AccessibilityPermissionChecking = SystemAccessibilityPermission()
+        permission: AccessibilityPermissionChecking = SystemAccessibilityPermission(),
+        permissionTransitionTracker: AccessibilityPermissionTransitionTracking,
+        relaunchCoordinator: AccessibilityPermissionRelaunchCoordinating
     ) {
-        if permission.isProcessTrusted(promptIfNeeded: true) {
+        let isTrusted = permission.isProcessTrusted(promptIfNeeded: true)
+
+        switch permissionTransitionTracker.decision(for: isTrusted) {
+        case .paste:
             previousApp?.activate(options: [.activateIgnoringOtherApps])
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                 _ = pasteService.paste(text: entry.content)
             }
-        } else {
+        case .copyOnly:
             _ = pasteService.paste(text: entry.content)
+        case .restartRequired:
+            previousApp?.activate(options: [.activateIgnoringOtherApps])
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                _ = pasteService.paste(text: entry.content)
+                relaunchCoordinator.promptForRelaunchAfterPermissionGrant()
+            }
         }
     }
 }
