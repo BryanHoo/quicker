@@ -36,7 +36,10 @@ final class AppState: ObservableObject {
         let clipboardStore = ClipboardStore(modelContainer: modelContainer, preferences: preferences)
         let textBlockStore = TextBlockStore(modelContainer: modelContainer)
         let pasteService = PasteService()
-        let permissionTransitionTracker = AccessibilityPermissionTransitionTracker()
+        let permissionTrustHistoryStore = UserDefaultsAccessibilityPermissionTrustHistoryStore()
+        let permissionTransitionTracker = AccessibilityPermissionTransitionTracker(
+            trustHistoryStore: permissionTrustHistoryStore
+        )
         let permissionRelaunchCoordinator = SystemAccessibilityPermissionRelaunchCoordinator()
         let toast = ToastPresenter()
 

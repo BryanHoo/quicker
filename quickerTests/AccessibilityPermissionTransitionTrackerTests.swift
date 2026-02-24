@@ -41,4 +41,36 @@ final class AccessibilityPermissionTransitionTrackerTests: XCTestCase {
 
         XCTAssertEqual(tracker.decision(for: true), .restartRequired)
     }
+
+    func testSkipsRestartWhenPermissionWasTrustedInPreviousSession() {
+        let history = SpyAccessibilityPermissionTrustHistoryStore(hasEverBeenTrusted: true)
+        let tracker = AccessibilityPermissionTransitionTracker(trustHistoryStore: history)
+
+        _ = tracker.decision(for: false)
+
+        XCTAssertEqual(tracker.decision(for: true), .paste)
+    }
+
+    func testRecordsTrustedStateWhenPermissionBecomesTrusted() {
+        let history = SpyAccessibilityPermissionTrustHistoryStore(hasEverBeenTrusted: false)
+        let tracker = AccessibilityPermissionTransitionTracker(trustHistoryStore: history)
+
+        XCTAssertFalse(history.hasEverBeenTrusted)
+
+        _ = tracker.decision(for: true)
+
+        XCTAssertTrue(history.hasEverBeenTrusted)
+    }
+}
+
+private final class SpyAccessibilityPermissionTrustHistoryStore: AccessibilityPermissionTrustHistoryStoring {
+    private(set) var hasEverBeenTrusted: Bool
+
+    init(hasEverBeenTrusted: Bool) {
+        self.hasEverBeenTrusted = hasEverBeenTrusted
+    }
+
+    func markTrusted() {
+        hasEverBeenTrusted = true
+    }
 }

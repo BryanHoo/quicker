@@ -6,6 +6,7 @@ VERSION="${VERSION:-}"
 DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-build/DerivedData}"
 CONFIGURATION="${CONFIGURATION:-Release}"
 OUT_DIR="${OUT_DIR:-build/artifacts}"
+REQUIRE_SIGNED_APP="${REQUIRE_SIGNED_APP:-0}"
 
 if [[ -z "${VERSION}" ]]; then
   if command -v git >/dev/null 2>&1 && git rev-parse --git-dir >/dev/null 2>&1; then
@@ -31,6 +32,16 @@ if [[ -z "${app_path}" || ! -d "${app_path}" ]]; then
   echo "error: cannot find ${APP_NAME}.app under ${DERIVED_DATA_PATH}" >&2
   echo "hint: run xcodebuild with -derivedDataPath ${DERIVED_DATA_PATH}" >&2
   exit 1
+fi
+
+if [[ "${REQUIRE_SIGNED_APP}" == "1" || "${REQUIRE_SIGNED_APP}" == "true" ]]; then
+  if ! /usr/bin/codesign -dv --verbose=2 "${app_path}" >/dev/null 2>&1; then
+    echo "error: ${APP_NAME}.app is not code signed." >&2
+    echo "hint: unsigned app updates can break persisted macOS Accessibility permission across versions." >&2
+    exit 1
+  fi
+
+  /usr/bin/codesign --verify --deep --strict "${app_path}"
 fi
 
 staging_dir="build/dmg-staging/${APP_NAME}-${VERSION_SAFE}"
@@ -60,4 +71,3 @@ hdiutil create \
 echo "Created:"
 echo "  ${dmg_path}"
 echo "  ${dmg_path}.sha256"
-

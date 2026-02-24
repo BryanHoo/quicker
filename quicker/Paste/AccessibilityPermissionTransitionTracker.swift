@@ -14,10 +14,22 @@ protocol AccessibilityPermissionTransitionTracking {
 final class AccessibilityPermissionTransitionTracker: AccessibilityPermissionTransitionTracking {
     private var hasObservedUntrusted = false
     private var hasRequestedRestartAfterGrant = false
+    private let trustHistoryStore: AccessibilityPermissionTrustHistoryStoring
+    private let hadTrustedBeforeCurrentSession: Bool
+
+    init(trustHistoryStore: AccessibilityPermissionTrustHistoryStoring = InMemoryAccessibilityPermissionTrustHistoryStore()) {
+        self.trustHistoryStore = trustHistoryStore
+        self.hadTrustedBeforeCurrentSession = trustHistoryStore.hasEverBeenTrusted
+    }
 
     func decision(for isTrusted: Bool) -> AccessibilityPermissionDecision {
         if isTrusted {
+            trustHistoryStore.markTrusted()
             guard hasObservedUntrusted, hasRequestedRestartAfterGrant == false else { return .paste }
+
+            // Returning users may transiently appear untrusted after app updates until permissions are re-granted.
+            guard hadTrustedBeforeCurrentSession == false else { return .paste }
+
             hasRequestedRestartAfterGrant = true
             return .restartRequired
         }
