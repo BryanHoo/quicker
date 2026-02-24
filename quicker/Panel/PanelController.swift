@@ -28,9 +28,6 @@ final class PanelController: NSObject, NSWindowDelegate {
 
         previousFrontmostApp = NSWorkspace.shared.frontmostApplication
 
-        // Activate first so the panel shows on the active space without a post-show jump.
-        NSApp.activate(ignoringOtherApps: true)
-
         let screen = preferredScreen()
         center(panel, on: screen)
 
@@ -80,7 +77,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         let hosting = NSHostingController(rootView: content)
         let panel = CenteredPanel(
             contentRect: NSRect(x: 0, y: 0, width: size.width, height: size.height),
-            styleMask: [.borderless],
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )

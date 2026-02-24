@@ -30,7 +30,6 @@ final class TextBlockPanelController: NSObject, NSWindowDelegate {
         guard let panel else { return }
 
         previousFrontmostApp = NSWorkspace.shared.frontmostApplication
-        NSApp.activate(ignoringOtherApps: true)
 
         let screen = preferredScreen()
         center(panel, on: screen)
@@ -75,7 +74,7 @@ final class TextBlockPanelController: NSObject, NSWindowDelegate {
         let hosting = NSHostingController(rootView: content)
         let panel = CenteredPanel(
             contentRect: NSRect(x: 0, y: 0, width: size.width, height: size.height),
-            styleMask: [.borderless],
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
