@@ -403,14 +403,14 @@ extension AppState {
         case .paste:
             previousApp?.activate(options: [.activateIgnoringOtherApps])
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                _ = pasteService.paste(text: entry.content)
+                _ = pasteService.paste(text: entry.content, skipCapture: true)
             }
         case .copyOnly:
-            _ = pasteService.paste(text: entry.content)
+            _ = pasteService.paste(text: entry.content, skipCapture: true)
         case .restartRequired:
             previousApp?.activate(options: [.activateIgnoringOtherApps])
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                _ = pasteService.paste(text: entry.content)
+                _ = pasteService.paste(text: entry.content, skipCapture: true)
                 relaunchCoordinator.promptForRelaunchAfterPermissionGrant()
             }
         }
