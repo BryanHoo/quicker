@@ -130,6 +130,11 @@ struct TextBlockPanelView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                             }
                             .buttonStyle(.plain)
+                            .simultaneousGesture(
+                                TapGesture(count: 2).onEnded {
+                                    onInsert(entry)
+                                }
+                            )
                         }
                     }
                 }
