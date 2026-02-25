@@ -22,6 +22,7 @@ final class AppState: ObservableObject {
     let clipboardMonitor: ClipboardMonitor
     let hotkeyManager: HotkeyManager
     let toast: ToastPresenter
+    private let appUpdateManager: AppUpdateManager
     private let isUsingInMemoryStore: Bool
 
     @Published private(set) var hotkeyRegisterStatus: OSStatus = noErr
@@ -42,6 +43,7 @@ final class AppState: ObservableObject {
         )
         let permissionRelaunchCoordinator = SystemAccessibilityPermissionRelaunchCoordinator()
         let toast = ToastPresenter()
+        let appUpdateManager = AppUpdateManager(toast: toast)
         let appStateLogger = Logger(subsystem: "quicker", category: "AppState")
 
         let panelViewModel = ClipboardPanelViewModel(pageSize: 5)
@@ -159,6 +161,7 @@ final class AppState: ObservableObject {
         self.textBlockStore = textBlockStore
         self.pasteService = pasteService
         self.toast = toast
+        self.appUpdateManager = appUpdateManager
         self.panelViewModel = panelViewModel
         self.panelController = panelController
         self.textBlockPanelViewModel = textBlockPanelViewModel
@@ -295,6 +298,7 @@ final class AppState: ObservableObject {
         if isUsingInMemoryStore {
             toast.show(message: "无法创建持久化存储，已切换为内存模式（重启后不会保留历史）", duration: 2.4)
         }
+        appUpdateManager.scheduleCheckAfterLaunch()
     }
 
     func togglePanel() {
