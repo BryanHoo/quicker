@@ -151,6 +151,11 @@ struct ClipboardPanelView: View {
                                     viewModel.selectIndexInPage(idx)
                                 }
                             )
+                            .simultaneousGesture(
+                                TapGesture(count: 2).onEnded {
+                                    onPaste(entry)
+                                }
+                            )
                         }
                     }
                 }
