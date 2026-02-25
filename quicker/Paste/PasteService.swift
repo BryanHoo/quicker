@@ -28,27 +28,27 @@ final class PasteService {
         self.assetStore = assetStore
     }
 
-    func paste(text: String) -> PasteResult {
-        writer.writeString(text)
+    func paste(text: String, skipCapture: Bool = false) -> PasteResult {
+        writer.writeString(text, skipCapture: skipCapture)
         return maybeSendCmdV()
     }
 
-    func paste(entry: ClipboardEntry) -> PasteResult {
+    func paste(entry: ClipboardEntry, skipCapture: Bool = false) -> PasteResult {
         switch ClipboardEntryKind(raw: entry.kindRaw) {
         case .text:
-            return paste(text: entry.text)
+            return paste(text: entry.text, skipCapture: skipCapture)
         case .rtf:
             if let rtf = entry.rtfData {
-                writer.writeRTF(rtf, plainText: entry.text)
+                writer.writeRTF(rtf, plainText: entry.text, skipCapture: skipCapture)
                 return maybeSendCmdV()
             }
-            return paste(text: entry.text)
+            return paste(text: entry.text, skipCapture: skipCapture)
         case .image:
             guard let path = entry.imagePath, let png = try? assetStore.loadImageData(relativePath: path) else {
-                writer.writeString(entry.text)
+                writer.writeString(entry.text, skipCapture: skipCapture)
                 return .copiedOnly
             }
-            writer.writePNG(png)
+            writer.writePNG(png, skipCapture: skipCapture)
             return maybeSendCmdV()
         }
     }

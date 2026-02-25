@@ -64,17 +64,17 @@ private final class SpyPasteboardWriter: PasteboardWriting {
     var writtenKinds: [String] = []
     var writtenStrings: [String] = []
 
-    func writeString(_ string: String) {
+    func writeString(_ string: String, skipCapture: Bool) {
         writtenKinds.append("text")
         writtenStrings.append(string)
     }
 
-    func writeRTF(_ rtf: Data, plainText: String) {
+    func writeRTF(_ rtf: Data, plainText: String, skipCapture: Bool) {
         writtenKinds.append("rtf")
         writtenStrings.append(plainText)
     }
 
-    func writePNG(_ png: Data) {
+    func writePNG(_ png: Data, skipCapture: Bool) {
         writtenKinds.append("image")
     }
 }

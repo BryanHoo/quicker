@@ -42,13 +42,59 @@ final class AppState: ObservableObject {
         )
         let permissionRelaunchCoordinator = SystemAccessibilityPermissionRelaunchCoordinator()
         let toast = ToastPresenter()
+        let appStateLogger = Logger(subsystem: "quicker", category: "AppState")
 
         let panelViewModel = ClipboardPanelViewModel(pageSize: 5)
         let panelController = PanelController(viewModel: panelViewModel) { entry, previousApp in
+            let now = Date()
+            let didPromote: Bool
+            do {
+                switch entry.kind {
+                case .text:
+                    _ = try clipboardStore.insert(text: entry.previewText, now: now)
+                    didPromote = true
+                case .rtf:
+                    if let rtf = entry.rtfData {
+                        let contentHash = entry.contentHash ?? ContentHash.sha256Hex(rtf)
+                        _ = try clipboardStore.insertRTF(rtfData: rtf, plainText: entry.previewText, contentHash: contentHash, now: now)
+                        didPromote = true
+                    } else {
+                        _ = try clipboardStore.insert(text: entry.previewText, now: now)
+                        didPromote = true
+                    }
+                case .image:
+                    if let path = entry.imagePath {
+                        let assetStore = ClipboardAssetStore()
+                        let png = try assetStore.loadImageData(relativePath: path)
+                        let contentHash = entry.contentHash ?? ContentHash.sha256Hex(png)
+                        _ = try clipboardStore.insertImage(pngData: png, contentHash: contentHash, now: now)
+                        didPromote = true
+                    } else {
+                        didPromote = false
+                    }
+                }
+            } catch {
+                appStateLogger.error("Failed to promote pasted entry into history: \(String(describing: error), privacy: .public)")
+                didPromote = false
+            }
+
+            if didPromote {
+                let items: [ClipboardEntry]
+                do {
+                    items = try clipboardStore.fetchLatest(limit: 500)
+                } catch {
+                    appStateLogger.error("clipboardStore.fetchLatest(limit:) failed after promotion: \(String(describing: error), privacy: .public)")
+                    toast.show(message: "读取剪切板历史失败，请稍后重试或重启。", duration: 2.4)
+                    items = []
+                }
+                panelViewModel.setEntries(Self.makePanelEntries(from: items))
+            }
+
             Self.pasteClipboardEntry(
                 entry,
                 previousApp: previousApp,
                 pasteService: pasteService,
+                skipCapture: didPromote,
                 permissionTransitionTracker: permissionTransitionTracker,
                 relaunchCoordinator: permissionRelaunchCoordinator
             )
@@ -70,8 +116,6 @@ final class AppState: ObservableObject {
             frontmostAppProvider: SystemFrontmostAppProvider(),
             logic: ClipboardMonitorLogic(ignoreAppStore: ignoreAppStore, clipboardStore: clipboardStore)
         )
-
-        let appStateLogger = Logger(subsystem: "quicker", category: "AppState")
         let hotkeyManager = HotkeyManager(onHotkeyAction: { action in
             switch AppHotkeyRoute(action: action) {
             case .clipboard:
@@ -321,6 +365,7 @@ extension AppState {
         _ entry: ClipboardPanelEntry,
         previousApp: RunningApplicationActivating?,
         pasteService: PasteService,
+        skipCapture: Bool = false,
         permission: AccessibilityPermissionChecking = SystemAccessibilityPermission(),
         permissionTransitionTracker: AccessibilityPermissionTransitionTracking,
         relaunchCoordinator: AccessibilityPermissionRelaunchCoordinating
@@ -331,14 +376,14 @@ extension AppState {
         case .paste:
             previousApp?.activate(options: [.activateIgnoringOtherApps])
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                _ = pasteService.paste(entry: makePasteEntry(from: entry))
+                _ = pasteService.paste(entry: makePasteEntry(from: entry), skipCapture: skipCapture)
             }
         case .copyOnly:
-            _ = pasteService.paste(entry: makePasteEntry(from: entry))
+            _ = pasteService.paste(entry: makePasteEntry(from: entry), skipCapture: skipCapture)
         case .restartRequired:
             previousApp?.activate(options: [.activateIgnoringOtherApps])
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                _ = pasteService.paste(entry: makePasteEntry(from: entry))
+                _ = pasteService.paste(entry: makePasteEntry(from: entry), skipCapture: skipCapture)
                 relaunchCoordinator.promptForRelaunchAfterPermissionGrant()
             }
         }

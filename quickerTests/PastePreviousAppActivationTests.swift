@@ -271,9 +271,9 @@ private func makePasteService(
 }
 
 private final class SpyPasteboardWriter: PasteboardWriting {
-    func writeString(_ string: String) {}
-    func writeRTF(_ rtf: Data, plainText: String) {}
-    func writePNG(_ png: Data) {}
+    func writeString(_ string: String, skipCapture: Bool) {}
+    func writeRTF(_ rtf: Data, plainText: String, skipCapture: Bool) {}
+    func writePNG(_ png: Data, skipCapture: Bool) {}
 }
 
 private final class SpyPasteEventSender: PasteEventSending {
@@ -283,15 +283,15 @@ private final class SpyPasteEventSender: PasteEventSending {
 private final class CountingPasteboardWriter: PasteboardWriting {
     private(set) var stringWriteCount = 0
 
-    func writeString(_ string: String) {
+    func writeString(_ string: String, skipCapture: Bool) {
         stringWriteCount += 1
     }
 
-    func writeRTF(_ rtf: Data, plainText: String) {
+    func writeRTF(_ rtf: Data, plainText: String, skipCapture: Bool) {
         stringWriteCount += 1
     }
 
-    func writePNG(_ png: Data) {
+    func writePNG(_ png: Data, skipCapture: Bool) {
         stringWriteCount += 1
     }
 }
