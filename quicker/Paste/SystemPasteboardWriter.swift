@@ -7,10 +7,16 @@ protocol PasteboardWriting {
 }
 
 struct SystemPasteboardWriter: PasteboardWriting {
+    private static let quickerInternalType = NSPasteboard.PasteboardType("com.bryanhu.quicker.internal.skipCapture")
+
     func writeString(_ string: String) {
         let pb = NSPasteboard.general
         pb.clearContents()
-        pb.setString(string, forType: .string)
+
+        let item = NSPasteboardItem()
+        item.setString(string, forType: .string)
+        item.setData(Data([0x01]), forType: Self.quickerInternalType)
+        pb.writeObjects([item])
     }
 
     func writeRTF(_ rtf: Data, plainText: String) {
@@ -20,6 +26,7 @@ struct SystemPasteboardWriter: PasteboardWriting {
         let item = NSPasteboardItem()
         item.setData(rtf, forType: .rtf)
         item.setString(plainText, forType: .string)
+        item.setData(Data([0x01]), forType: Self.quickerInternalType)
         pb.writeObjects([item])
     }
 
@@ -29,6 +36,7 @@ struct SystemPasteboardWriter: PasteboardWriting {
 
         let item = NSPasteboardItem()
         item.setData(png, forType: .png)
+        item.setData(Data([0x01]), forType: Self.quickerInternalType)
         pb.writeObjects([item])
     }
 }

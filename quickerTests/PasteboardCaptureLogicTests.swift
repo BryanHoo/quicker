@@ -3,6 +3,13 @@ import XCTest
 @testable import quicker
 
 final class PasteboardCaptureLogicTests: XCTestCase {
+    func testSkipsWhenQuickerInternalMarkerPresent() {
+        let snapshot = PasteboardSnapshot(items: [
+            .init(typeIdentifiers: ["com.bryanhu.quicker.internal.skipCapture", "public.utf8-plain-text"], pngData: nil, tiffData: nil, rtfData: nil, string: "A"),
+        ])
+        XCTAssertNil(PasteboardCaptureLogic().capture(snapshot: snapshot))
+    }
+
     func testSkipsWhenTransientMarkerPresent() {
         let snapshot = PasteboardSnapshot(items: [
             .init(typeIdentifiers: ["org.nspasteboard.TransientType"], pngData: nil, tiffData: nil, rtfData: nil, string: "A"),
@@ -35,4 +42,3 @@ final class PasteboardCaptureLogicTests: XCTestCase {
         XCTAssertEqual(captured.plainText, "A\nB")
     }
 }
-
