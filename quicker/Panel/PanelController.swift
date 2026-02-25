@@ -22,7 +22,6 @@ final class PanelController: NSObject, NSWindowDelegate {
     }
 
     func show() {
-        let isFirstPresentation = (panel == nil)
         if panel == nil { panel = makePanel() }
         guard let panel else { return }
 
@@ -31,23 +30,18 @@ final class PanelController: NSObject, NSWindowDelegate {
         let screen = preferredScreen()
         center(panel, on: screen)
 
-        // On the first presentation, the final window frame can settle only after AppKit lays out the
-        // hosting view. Hide the panel until we can re-center using the final frame.
-        if isFirstPresentation {
-            panel.alphaValue = 0
-        } else {
-            panel.alphaValue = 1
-        }
-
+        // The hosted SwiftUI view can show stale content for a brief moment right after the window is
+        // ordered front (e.g. after pasting, the history list re-sorts and "jumps" on open). Keep the
+        // panel invisible until AppKit lays out the hosting view and SwiftUI has applied the latest
+        // model updates.
+        panel.alphaValue = 0
         panel.makeKeyAndOrderFront(nil)
 
-        if isFirstPresentation {
-            DispatchQueue.main.async { [weak self] in
-                guard let self, let panel = self.panel, panel.isVisible else { return }
-                panel.contentView?.layoutSubtreeIfNeeded()
-                self.center(panel, on: screen)
-                panel.alphaValue = 1
-            }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let panel = self.panel, panel.isVisible else { return }
+            panel.contentView?.layoutSubtreeIfNeeded()
+            self.center(panel, on: screen)
+            panel.alphaValue = 1
         }
     }
 
